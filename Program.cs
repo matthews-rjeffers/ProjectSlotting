@@ -34,6 +34,7 @@ builder.Services.AddSwaggerGen();
 // Register custom services
 builder.Services.AddScoped<ICapacityService, CapacityService>();
 builder.Services.AddScoped<IAllocationService, AllocationService>();
+builder.Services.AddScoped<IScheduleSuggestionService, ScheduleSuggestionService>();
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>

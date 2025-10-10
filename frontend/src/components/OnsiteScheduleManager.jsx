@@ -50,11 +50,22 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
 
   const handleUpdateSchedule = async (schedule) => {
     try {
-      await updateOnsiteSchedule(schedule.onsiteScheduleId, schedule);
+      // Only send necessary fields, exclude navigation properties
+      const updatePayload = {
+        onsiteScheduleId: schedule.onsiteScheduleId,
+        projectId: schedule.projectId,
+        weekStartDate: schedule.weekStartDate,
+        engineerCount: schedule.engineerCount,
+        onsiteType: schedule.onsiteType
+      };
+      console.log('Updating schedule with payload:', updatePayload);
+      console.log('Original schedule object:', schedule);
+      await updateOnsiteSchedule(schedule.onsiteScheduleId, updatePayload);
       setEditingSchedule(null);
       loadSchedules();
     } catch (error) {
       console.error('Error updating schedule:', error);
+      console.error('Error response:', error.response?.data);
       alert('Failed to update onsite schedule');
     }
   };

@@ -4,6 +4,12 @@ import './AllocationPreviewModal.css';
 const AllocationPreviewModal = ({ isOpen, onClose, preview, projectName, onConfirm }) => {
   if (!isOpen || !preview) return null;
 
+  // Debug logging
+  console.log('AllocationPreviewModal preview data:', preview);
+  if (preview.weeklyCapacity && preview.weeklyCapacity.length > 0) {
+    console.log('First week sample:', preview.weeklyCapacity[0]);
+  }
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

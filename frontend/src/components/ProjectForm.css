@@ -18,3 +18,25 @@
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
+
+.field-hint {
+  display: block;
+  color: #6c757d;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.buffer-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.buffer-input-wrapper input {
+  flex: 1;
+}
+
+.input-suffix {
+  color: #6c757d;
+  font-weight: 500;
+}

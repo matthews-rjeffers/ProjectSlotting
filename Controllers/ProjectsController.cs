@@ -12,11 +12,16 @@ namespace ProjectScheduler.Controllers
     {
         private readonly ProjectSchedulerDbContext _context;
         private readonly IAllocationService _allocationService;
+        private readonly IScheduleSuggestionService _scheduleSuggestionService;
 
-        public ProjectsController(ProjectSchedulerDbContext context, IAllocationService allocationService)
+        public ProjectsController(
+            ProjectSchedulerDbContext context,
+            IAllocationService allocationService,
+            IScheduleSuggestionService scheduleSuggestionService)
         {
             _context = context;
             _allocationService = allocationService;
+            _scheduleSuggestionService = scheduleSuggestionService;
         }
 
         // GET: api/Projects
@@ -123,11 +128,16 @@ namespace ProjectScheduler.Controllers
                 return NotFound();
             }
 
+            if (!project.Crpdate.HasValue)
+            {
+                return BadRequest(new { message = "Project must have a CRP date to be allocated. Use Schedule Suggestion to set dates." });
+            }
+
             var success = await _allocationService.AllocateProjectToSquad(
                 id,
                 request.SquadId,
                 request.StartDate ?? project.StartDate ?? DateTime.Now,
-                project.Crpdate,
+                project.Crpdate.Value,
                 project.EstimatedDevHours
             );
 
@@ -193,6 +203,36 @@ namespace ProjectScheduler.Controllers
             return Ok(preview);
         }
 
+        // GET: api/Projects/5/schedule-suggestion/3
+        [HttpGet("{projectId}/schedule-suggestion/{squadId}")]
+        public async Task<ActionResult<ScheduleSuggestion>> GetScheduleSuggestion(int projectId, int squadId, [FromQuery] decimal? bufferPercentage = null)
+        {
+            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(projectId, squadId, bufferPercentage);
+            return Ok(suggestion);
+        }
+
+        // POST: api/Projects/5/apply-schedule-suggestion
+        [HttpPost("{projectId}/apply-schedule-suggestion")]
+        public async Task<IActionResult> ApplyScheduleSuggestion(int projectId, [FromBody] ApplyScheduleRequest request)
+        {
+            // First get the suggestion to verify it
+            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(projectId, request.SquadId, request.BufferPercentage);
+
+            if (!suggestion.CanAllocate)
+            {
+                return BadRequest(new { message = suggestion.Message });
+            }
+
+            var success = await _scheduleSuggestionService.ApplyScheduleSuggestion(projectId, request.SquadId, suggestion);
+
+            if (!success)
+            {
+                return BadRequest(new { message = "Failed to apply schedule suggestion" });
+            }
+
+            return Ok(new { message = "Schedule applied successfully", suggestion });
+        }
+
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.ProjectId == id);
@@ -211,5 +251,11 @@ namespace ProjectScheduler.Controllers
         public DateTime StartDate { get; set; }
         public DateTime CRPDate { get; set; }
         public decimal TotalDevHours { get; set; }
+    }
+
+    public class ApplyScheduleRequest
+    {
+        public int SquadId { get; set; }
+        public decimal? BufferPercentage { get; set; }
     }
 }

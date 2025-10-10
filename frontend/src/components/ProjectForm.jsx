@@ -15,11 +15,13 @@ function ProjectForm({ project, onSave, onCancel }) {
     crpDate: '',
     uatDate: '',
     jiraLink: '',
-    startDate: ''
+    startDate: '',
+    bufferPercentage: 20
   });
 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [createdProject, setCreatedProject] = useState(null);
 
   useEffect(() => {
     if (project) {
@@ -34,7 +36,8 @@ function ProjectForm({ project, onSave, onCancel }) {
         crpDate: project.crpdate ? project.crpdate.split('T')[0] : '',
         uatDate: project.uatdate ? project.uatdate.split('T')[0] : '',
         jiraLink: project.jiraLink || '',
-        startDate: project.startDate ? project.startDate.split('T')[0] : ''
+        startDate: project.startDate ? project.startDate.split('T')[0] : '',
+        bufferPercentage: project.bufferPercentage || 20
       });
     }
   }, [project]);
@@ -58,9 +61,7 @@ function ProjectForm({ project, onSave, onCancel }) {
       newErrors.estimatedOnsiteHours = 'Valid estimated onsite hours required';
     }
 
-    if (!formData.crpDate) {
-      newErrors.crpDate = 'CRP date is required';
-    }
+    // CRP date is now optional for new projects
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -84,19 +85,22 @@ function ProjectForm({ project, onSave, onCancel }) {
         estimatedDevHours: parseFloat(formData.estimatedDevHours),
         estimatedOnsiteHours: parseFloat(formData.estimatedOnsiteHours),
         goLiveDate: formData.goLiveDate || null,
-        crpdate: formData.crpDate,
+        crpdate: formData.crpDate || null,
+        bufferPercentage: parseFloat(formData.bufferPercentage || 20),
         uatdate: formData.uatDate || null,
         jiraLink: formData.jiraLink,
         startDate: formData.startDate || null
       };
 
-      if (project) {
+      if (project && project.projectId) {
         await updateProject(project.projectId, { ...payload, projectId: project.projectId });
+        onSave();
       } else {
-        await createProject(payload);
+        const response = await createProject(payload);
+        // Store the created project so we can show onsite schedule manager
+        setCreatedProject(response.data);
+        alert('Project created! You can now add onsite schedules before closing.');
       }
-
-      onSave();
     } catch (error) {
       console.error('Error saving project:', error);
       alert('Failed to save project. Please try again.');
@@ -127,7 +131,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 value={formData.projectNumber}
                 onChange={handleChange}
                 className={errors.projectNumber ? 'error' : ''}
-                disabled={!!project}
+                disabled={project && project.projectId}
               />
               {errors.projectNumber && <span className="error-message">{errors.projectNumber}</span>}
             </div>
@@ -211,7 +215,7 @@ function ProjectForm({ project, onSave, onCancel }) {
             </div>
 
             <div className="form-group">
-              <label>CRP Date (Code Complete) *</label>
+              <label>CRP Date (Code Complete)</label>
               <input
                 type="date"
                 name="crpDate"
@@ -220,6 +224,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 className={errors.crpDate ? 'error' : ''}
               />
               {errors.crpDate && <span className="error-message">{errors.crpDate}</span>}
+              <small className="field-hint">Optional - Can be set using Schedule Suggestion</small>
             </div>
           </div>
 
@@ -245,32 +250,58 @@ function ProjectForm({ project, onSave, onCancel }) {
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Jira Link</label>
-            <input
-              type="url"
-              name="jiraLink"
-              value={formData.jiraLink}
-              onChange={handleChange}
-              placeholder="https://jira.example.com/browse/PROJECT-123"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>Buffer Percentage</label>
+              <div className="buffer-input-wrapper">
+                <input
+                  type="number"
+                  name="bufferPercentage"
+                  value={formData.bufferPercentage}
+                  onChange={handleChange}
+                  min="0"
+                  max="100"
+                  step="5"
+                />
+                <span className="input-suffix">%</span>
+              </div>
+              <small className="field-hint">Extra time added for schedule suggestions</small>
+            </div>
+
+            <div className="form-group">
+              <label>Jira Link</label>
+              <input
+                type="url"
+                name="jiraLink"
+                value={formData.jiraLink}
+                onChange={handleChange}
+                placeholder="https://jira.example.com/browse/PROJECT-123"
+              />
+            </div>
           </div>
 
-          {project && (
+          {(project?.projectId || createdProject?.projectId) && (
             <OnsiteScheduleManager
-              projectId={project.projectId}
+              projectId={project?.projectId || createdProject?.projectId}
               uatDate={formData.uatDate}
               goLiveDate={formData.goLiveDate}
             />
           )}
 
           <div className="form-actions">
-            <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={saving}>
-              Cancel
+            <button
+              type="button"
+              onClick={createdProject ? onSave : onCancel}
+              className="btn btn-secondary"
+              disabled={saving}
+            >
+              {createdProject ? 'Done' : 'Cancel'}
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : (project ? 'Update' : 'Create')}
-            </button>
+            {!createdProject && (
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving...' : (project ? 'Update' : 'Create Project')}
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -156,9 +156,12 @@ namespace ProjectScheduler.Services
             if (project == null)
                 return false;
 
+            if (!project.Crpdate.HasValue)
+                return false;
+
             // Use the project's estimated dev hours for reallocation
             // The AllocateProjectToSquad method will handle both dev and onsite hours
-            return await AllocateProjectToSquad(projectId, squadId, newStartDate, project.Crpdate, project.EstimatedDevHours);
+            return await AllocateProjectToSquad(projectId, squadId, newStartDate, project.Crpdate.Value, project.EstimatedDevHours);
         }
 
         public async Task RemoveProjectAllocations(int projectId, int? squadId = null)
@@ -227,8 +230,15 @@ namespace ProjectScheduler.Services
                 return preview;
             }
 
+            if (!project.Crpdate.HasValue)
+            {
+                preview.CanAllocate = false;
+                preview.Message = "Project must have a CRP date";
+                return preview;
+            }
+
             // Phase 1: Calculate dev hours (Start Date to UAT Date)
-            var devEndDate = project.Uatdate ?? project.Crpdate;
+            var devEndDate = project.Uatdate ?? project.Crpdate.Value;
             var devWorkingDays = GetWorkingDays(project.StartDate.Value, devEndDate);
             var devHoursPerDay = devWorkingDays.Count > 0 ? project.EstimatedDevHours / devWorkingDays.Count : 0;
 

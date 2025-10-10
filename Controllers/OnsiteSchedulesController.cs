@@ -48,23 +48,25 @@ namespace ProjectScheduler.Controllers
 
         // PUT: api/OnsiteSchedules/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateOnsiteSchedule(int id, OnsiteSchedule schedule)
+        public async Task<IActionResult> UpdateOnsiteSchedule(int id, UpdateOnsiteScheduleDto dto)
         {
-            if (id != schedule.OnsiteScheduleId)
+            if (id != dto.OnsiteScheduleId)
             {
                 return BadRequest();
             }
 
-            // Remove validation error for navigation property
-            ModelState.Remove("Project");
-
-            if (!ModelState.IsValid)
+            var schedule = await _context.OnsiteSchedules.FindAsync(id);
+            if (schedule == null)
             {
-                return BadRequest(ModelState);
+                return NotFound();
             }
 
+            // Update the properties
+            schedule.ProjectId = dto.ProjectId;
+            schedule.WeekStartDate = dto.WeekStartDate;
+            schedule.EngineerCount = dto.EngineerCount;
+            schedule.OnsiteType = dto.OnsiteType;
             schedule.UpdatedDate = DateTime.UtcNow;
-            _context.Entry(schedule).State = EntityState.Modified;
 
             try
             {
@@ -109,6 +111,26 @@ namespace ProjectScheduler.Controllers
 
     public class CreateOnsiteScheduleDto
     {
+        [Required]
+        public int ProjectId { get; set; }
+
+        [Required]
+        public DateTime WeekStartDate { get; set; }
+
+        [Required]
+        [Range(1, 20)]
+        public int EngineerCount { get; set; }
+
+        [Required]
+        [MaxLength(20)]
+        public string OnsiteType { get; set; } = "UAT";
+    }
+
+    public class UpdateOnsiteScheduleDto
+    {
+        [Required]
+        public int OnsiteScheduleId { get; set; }
+
         [Required]
         public int ProjectId { get; set; }
 

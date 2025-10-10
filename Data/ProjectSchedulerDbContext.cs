@@ -49,6 +49,7 @@ public partial class ProjectSchedulerDbContext : DbContext
             entity.Property(e => e.CustomerState).HasMaxLength(2);
             entity.Property(e => e.EstimatedDevHours).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.EstimatedOnsiteHours).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.BufferPercentage).HasColumnType("decimal(5, 2)").HasDefaultValue(20);
             entity.Property(e => e.JiraLink).HasMaxLength(500);
             entity.Property(e => e.ProjectNumber).HasMaxLength(50);
             entity.Property(e => e.Uatdate).HasColumnName("UATDate");

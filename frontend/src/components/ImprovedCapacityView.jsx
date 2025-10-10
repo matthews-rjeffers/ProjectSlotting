@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSquadCapacity, allocateProject, reallocateProject, unassignProject, getProjectAllocations } from '../api';
+import ScheduleSuggestionModal from './ScheduleSuggestionModal';
 import './ImprovedCapacityView.css';
 
 function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUpdate }) {
@@ -9,6 +10,7 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
   const [loading, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [showUnallocated, setShowUnallocated] = useState(true);
+  const [scheduleSuggestionProject, setScheduleSuggestionProject] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -285,15 +287,31 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
                     <span className="hours-badge">{project.estimatedDevHours}h</span>
                   </div>
                   <div className="project-customer">{project.customerName}</div>
-                  <div className="project-dates">
-                    CRP: {new Date(project.crpdate).toLocaleDateString()}
-                  </div>
-                  <button
-                    onClick={() => handleAllocateProject(project)}
-                    className="btn btn-small btn-primary"
-                  >
-                    Allocate to {squad?.squadName}
-                  </button>
+                  {project.crpdate ? (
+                    <>
+                      <div className="project-dates">
+                        CRP: {new Date(project.crpdate).toLocaleDateString()}
+                      </div>
+                      <button
+                        onClick={() => handleAllocateProject(project)}
+                        className="btn btn-small btn-primary"
+                      >
+                        Allocate to {squad?.squadName}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="project-dates">
+                        <em>No dates set</em>
+                      </div>
+                      <button
+                        onClick={() => setScheduleSuggestionProject(project)}
+                        className="btn btn-small btn-success"
+                      >
+                        Suggest Schedule
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -406,6 +424,19 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
           <p>No capacity data available for the selected date range.</p>
           <p>Try adjusting your date range or add team members to the squad.</p>
         </div>
+      )}
+
+      {/* Schedule Suggestion Modal */}
+      {scheduleSuggestionProject && (
+        <ScheduleSuggestionModal
+          project={scheduleSuggestionProject}
+          onClose={() => setScheduleSuggestionProject(null)}
+          onSuccess={() => {
+            setScheduleSuggestionProject(null);
+            onProjectUpdate();
+            loadData();
+          }}
+        />
       )}
     </div>
   );

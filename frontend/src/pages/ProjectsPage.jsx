@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getProjects, getSquads, getProjectAllocations, previewProjectAllocation, allocateProject } from '../api';
+import { getProjects, getSquads, getProjectAllocations, previewProjectAllocation, allocateProject, deleteProject } from '../api';
 import AllocationPreviewModal from '../components/AllocationPreviewModal';
+import ScheduleSuggestionModal from '../components/ScheduleSuggestionModal';
 import ProjectForm from '../components/ProjectForm';
 import './ProjectsPage.css';
 
@@ -10,6 +11,7 @@ const ProjectsPage = () => {
   const [projectAllocations, setProjectAllocations] = useState({});
   const [loading, setLoading] = useState(true);
   const [previewModal, setPreviewModal] = useState({ isOpen: false, preview: null, projectId: null, squadId: null, projectName: '' });
+  const [scheduleSuggestionProject, setScheduleSuggestionProject] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
 
   useEffect(() => {
@@ -106,6 +108,25 @@ const ProjectsPage = () => {
     setEditingProject(null);
   };
 
+  const handleDeleteProject = async (projectId, projectName) => {
+    if (!window.confirm(`Are you sure you want to delete project "${projectName}"? This will also remove all allocations for this project.`)) {
+      return;
+    }
+
+    try {
+      await deleteProject(projectId);
+      loadData(); // Refresh the project list
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. It may have dependencies.');
+    }
+  };
+
+  const handleScheduleSuggestionApplied = () => {
+    setScheduleSuggestionProject(null);
+    loadData(); // Refresh to show updated project dates and allocations
+  };
+
   const sortedProjects = [...projects].sort((a, b) => {
     const dateA = a.crpdate ? new Date(a.crpdate) : new Date(9999, 11, 31);
     const dateB = b.crpdate ? new Date(b.crpdate) : new Date(9999, 11, 31);
@@ -123,6 +144,12 @@ const ProjectsPage = () => {
           <h1>Projects</h1>
           <p className="subtitle">View all projects and their squad assignments</p>
         </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => setEditingProject({})}
+        >
+          + Add Project
+        </button>
       </div>
 
       <div className="projects-table-container">
@@ -166,24 +193,41 @@ const ProjectsPage = () => {
                     >
                       Edit
                     </button>
+                    <button
+                      className="btn-delete"
+                      onClick={() => handleDeleteProject(project.projectId, getProjectDisplayName(project))}
+                      title="Delete Project"
+                    >
+                      Delete
+                    </button>
                     {!projectAllocations[project.projectId] && (
-                      <select
-                        className="squad-select"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handlePreviewAllocation(project.projectId, parseInt(e.target.value));
-                            e.target.value = '';
-                          }
-                        }}
-                        defaultValue=""
-                      >
-                        <option value="">Assign to squad...</option>
-                        {squads.map(squad => (
-                          <option key={squad.squadId} value={squad.squadId}>
-                            {squad.squadName}
-                          </option>
-                        ))}
-                      </select>
+                      project.crpdate ? (
+                        <select
+                          className="squad-select"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handlePreviewAllocation(project.projectId, parseInt(e.target.value));
+                              e.target.value = '';
+                            }
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="">Assign to squad...</option>
+                          {squads.map(squad => (
+                            <option key={squad.squadId} value={squad.squadId}>
+                              {squad.squadName}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <button
+                          className="btn-suggest"
+                          onClick={() => setScheduleSuggestionProject(project)}
+                          title="Suggest Schedule"
+                        >
+                          Suggest Schedule
+                        </button>
+                      )
                     )}
                   </div>
                 </td>
@@ -200,6 +244,15 @@ const ProjectsPage = () => {
         projectName={previewModal.projectName}
         onConfirm={handleConfirmAllocation}
       />
+
+      {scheduleSuggestionProject && (
+        <ScheduleSuggestionModal
+          project={scheduleSuggestionProject}
+          squads={squads}
+          onClose={() => setScheduleSuggestionProject(null)}
+          onApplied={handleScheduleSuggestionApplied}
+        />
+      )}
 
       {editingProject && (
         <ProjectForm

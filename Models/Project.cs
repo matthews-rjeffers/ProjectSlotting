@@ -21,9 +21,11 @@ public partial class Project
 
     public DateTime? GoLiveDate { get; set; }
 
-    public DateTime Crpdate { get; set; }
+    public DateTime? Crpdate { get; set; }
 
     public DateTime? Uatdate { get; set; }
+
+    public decimal BufferPercentage { get; set; } = 20;
 
     public string JiraLink { get; set; } = null!;
 

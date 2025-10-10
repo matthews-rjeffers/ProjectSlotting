@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProjectScheduler.Data;
 
@@ -11,9 +12,11 @@ using ProjectScheduler.Data;
 namespace ProjectScheduler.Migrations.ProjectSchedulerDb
 {
     [DbContext(typeof(ProjectSchedulerDbContext))]
-    partial class ProjectSchedulerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251010175652_AddBufferPercentageAndMakeCrpNullable")]
+    partial class AddBufferPercentageAndMakeCrpNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiral Galaxy Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .title {
+            position: absolute;
+            top: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+        }
+        .add-button {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+        .add-button:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .galaxy-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="title">🌌 Spiral Galaxy Visualization</div>
+    <button class="add-button" onclick="addNewGalaxy()">✨ Add Galaxy</button>
+    <div class="galaxy-counter">Galaxies: <span id="galaxyCount">1</span></div>
+    <canvas id="galaxyCanvas"></canvas>
+    <div class="controls">Click and drag to rotate • Scroll to zoom • Click button to add galaxies</div>
+
+    <script>
+        const canvas = document.getElementById('galaxyCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Galaxy parameters
+        let rotation = 0;
+        let zoom = 0.8;
+        let mouseDown = false;
+        let lastMouseX = 0;
+        let rotationSpeed = 0.005;
+
+        // Galaxy class
+        class Galaxy {
+            constructor(x, y, colorOffset = 0, size = 1) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.colorOffset = colorOffset;
+                this.size = size;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.generateParticles();
+            }
+
+            generateParticles() {
+                const numArms = Math.floor(Math.random() * 3) + 2; // 2-4 arms
+                const particlesPerArm = 500;
+
+                // Generate spiral arms
+                for (let arm = 0; arm < numArms; arm++) {
+                    const armOffset = (arm * 2 * Math.PI) / numArms;
+
+                    for (let i = 0; i < particlesPerArm; i++) {
+                        const t = i / particlesPerArm;
+                        const angle = t * 4 * Math.PI;
+                        const radius = t * 200 * this.size;
+
+                        // Color gradient with galaxy-specific offset
+                        const hue = (this.colorOffset + arm * 120 + t * 60) % 360;
+                        const brightness = 100 - t * 30;
+                        const alpha = 0.8 - t * 0.3;
+                        const color = `hsla(${hue}, 80%, ${brightness}%, ${alpha})`;
+
+                        this.particles.push({
+                            baseAngle: angle,
+                            baseRadius: radius,
+                            armOffset: armOffset,
+                            color: color,
+                            size: (Math.random() * 2 + 1) * this.size,
+                            randomX: (Math.random() - 0.5) * 10 * this.size,
+                            randomY: (Math.random() - 0.5) * 10 * this.size
+                        });
+                    }
+                }
+
+                // Add central bulge
+                for (let i = 0; i < 200; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * Math.random() * 40 * this.size;
+                    const color = `rgba(255, ${200 + Math.random() * 55}, 100, ${0.8 + Math.random() * 0.2})`;
+
+                    this.particles.push({
+                        baseAngle: angle,
+                        baseRadius: radius,
+                        armOffset: 0,
+                        color: color,
+                        size: (Math.random() * 2 + 1) * this.size,
+                        randomX: 0,
+                        randomY: 0
+                    });
+                }
+            }
+
+            draw(globalRotation) {
+                this.particles.forEach(particle => {
+                    const angle = particle.baseAngle + particle.armOffset + globalRotation + this.rotation;
+                    const x = this.x + (particle.baseRadius * Math.cos(angle) + particle.randomX) * zoom;
+                    const y = this.y + (particle.baseRadius * Math.sin(angle) + particle.randomY) * zoom;
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, particle.size * zoom, 0, Math.PI * 2);
+                    ctx.fillStyle = particle.color;
+                    ctx.fill();
+                });
+            }
+        }
+
+        // Array to hold all galaxies
+        const galaxies = [];
+
+        // Create initial galaxy
+        galaxies.push(new Galaxy(canvas.width / 2, canvas.height / 2, 0, 1));
+
+        // Function to add new galaxy
+        function addNewGalaxy() {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const colorOffset = Math.random() * 360;
+            const size = 0.7 + Math.random() * 0.6; // Random size between 0.7 and 1.3
+
+            galaxies.push(new Galaxy(x, y, colorOffset, size));
+            document.getElementById('galaxyCount').textContent = galaxies.length;
+        }
+
+        // Mouse controls
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            lastMouseX = e.clientX;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const deltaX = e.clientX - lastMouseX;
+                rotation += deltaX * 0.01;
+                lastMouseX = e.clientX;
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.95 : 1.05;
+            zoom = Math.max(0.3, Math.min(zoom, 3));
+        });
+
+        // Touch controls for mobile
+        let lastTouchX = 0;
+        canvas.addEventListener('touchstart', (e) => {
+            lastTouchX = e.touches[0].clientX;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const deltaX = e.touches[0].clientX - lastTouchX;
+            rotation += deltaX * 0.01;
+            lastTouchX = e.touches[0].clientX;
+        });
+
+        // Animation loop
+        function animate() {
+            // Clear canvas with fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Auto-rotate
+            rotation += rotationSpeed;
+
+            // Draw all galaxies
+            galaxies.forEach(galaxy => galaxy.draw(rotation));
+
+            requestAnimationFrame(animate);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

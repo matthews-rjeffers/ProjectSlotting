@@ -1,0 +1,157 @@
+.team-member-management {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.management-header {
+  margin-bottom: 2rem;
+}
+
+.management-header h2 {
+  margin: 1rem 0;
+  color: #2c3e50;
+}
+
+.team-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.stat {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.stat strong {
+  color: #2c3e50;
+  margin-right: 0.5rem;
+}
+
+.management-actions {
+  margin-bottom: 1.5rem;
+}
+
+.member-form {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.member-form h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.form-hint {
+  display: block;
+  color: #777;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.team-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.role-group h3 {
+  color: #2c3e50;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #3498db;
+}
+
+.members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.member-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  background: white;
+  transition: all 0.2s;
+}
+
+.member-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #3498db;
+}
+
+.member-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+
+.member-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.member-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.info-item .label {
+  color: #666;
+}
+
+.info-item .value {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.capacity-badge {
+  background: #27ae60;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .team-member-management {
+    padding: 1rem;
+  }
+
+  .team-stats {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .members-grid {
+    grid-template-columns: 1fr;
+  }
+}

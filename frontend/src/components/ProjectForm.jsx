@@ -1,0 +1,281 @@
+import React, { useState, useEffect } from 'react';
+import { createProject, updateProject } from '../api';
+import OnsiteScheduleManager from './OnsiteScheduleManager';
+import './ProjectForm.css';
+
+function ProjectForm({ project, onSave, onCancel }) {
+  const [formData, setFormData] = useState({
+    projectNumber: '',
+    customerName: '',
+    customerCity: '',
+    customerState: '',
+    estimatedDevHours: '',
+    estimatedOnsiteHours: '',
+    goLiveDate: '',
+    crpDate: '',
+    uatDate: '',
+    jiraLink: '',
+    startDate: ''
+  });
+
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (project) {
+      setFormData({
+        projectNumber: project.projectNumber || '',
+        customerName: project.customerName || '',
+        customerCity: project.customerCity || '',
+        customerState: project.customerState || '',
+        estimatedDevHours: project.estimatedDevHours || '',
+        estimatedOnsiteHours: project.estimatedOnsiteHours || '',
+        goLiveDate: project.goLiveDate ? project.goLiveDate.split('T')[0] : '',
+        crpDate: project.crpdate ? project.crpdate.split('T')[0] : '',
+        uatDate: project.uatdate ? project.uatdate.split('T')[0] : '',
+        jiraLink: project.jiraLink || '',
+        startDate: project.startDate ? project.startDate.split('T')[0] : ''
+      });
+    }
+  }, [project]);
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.projectNumber.trim()) {
+      newErrors.projectNumber = 'Project number is required';
+    }
+
+    if (!formData.customerName.trim()) {
+      newErrors.customerName = 'Customer name is required';
+    }
+
+    if (!formData.estimatedDevHours || formData.estimatedDevHours <= 0) {
+      newErrors.estimatedDevHours = 'Valid estimated dev hours required';
+    }
+
+    if (!formData.estimatedOnsiteHours || formData.estimatedOnsiteHours < 0) {
+      newErrors.estimatedOnsiteHours = 'Valid estimated onsite hours required';
+    }
+
+    if (!formData.crpDate) {
+      newErrors.crpDate = 'CRP date is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validate()) {
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const payload = {
+        projectNumber: formData.projectNumber,
+        customerName: formData.customerName,
+        customerCity: formData.customerCity,
+        customerState: formData.customerState,
+        estimatedDevHours: parseFloat(formData.estimatedDevHours),
+        estimatedOnsiteHours: parseFloat(formData.estimatedOnsiteHours),
+        goLiveDate: formData.goLiveDate || null,
+        crpdate: formData.crpDate,
+        uatdate: formData.uatDate || null,
+        jiraLink: formData.jiraLink,
+        startDate: formData.startDate || null
+      };
+
+      if (project) {
+        await updateProject(project.projectId, { ...payload, projectId: project.projectId });
+      } else {
+        await createProject(payload);
+      }
+
+      onSave();
+    } catch (error) {
+      console.error('Error saving project:', error);
+      alert('Failed to save project. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>{project ? 'Edit Project' : 'New Project'}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Project Number *</label>
+              <input
+                type="text"
+                name="projectNumber"
+                value={formData.projectNumber}
+                onChange={handleChange}
+                className={errors.projectNumber ? 'error' : ''}
+                disabled={!!project}
+              />
+              {errors.projectNumber && <span className="error-message">{errors.projectNumber}</span>}
+            </div>
+
+            <div className="form-group">
+              <label>Customer Name *</label>
+              <input
+                type="text"
+                name="customerName"
+                value={formData.customerName}
+                onChange={handleChange}
+                className={errors.customerName ? 'error' : ''}
+              />
+              {errors.customerName && <span className="error-message">{errors.customerName}</span>}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Customer City</label>
+              <input
+                type="text"
+                name="customerCity"
+                value={formData.customerCity}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Customer State</label>
+              <input
+                type="text"
+                name="customerState"
+                value={formData.customerState}
+                onChange={handleChange}
+                maxLength="2"
+                placeholder="2-letter code"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Estimated Dev Hours *</label>
+              <input
+                type="number"
+                name="estimatedDevHours"
+                value={formData.estimatedDevHours}
+                onChange={handleChange}
+                step="0.5"
+                min="0"
+                className={errors.estimatedDevHours ? 'error' : ''}
+              />
+              {errors.estimatedDevHours && <span className="error-message">{errors.estimatedDevHours}</span>}
+            </div>
+
+            <div className="form-group">
+              <label>Estimated Onsite Hours *</label>
+              <input
+                type="number"
+                name="estimatedOnsiteHours"
+                value={formData.estimatedOnsiteHours}
+                onChange={handleChange}
+                step="0.5"
+                min="0"
+                className={errors.estimatedOnsiteHours ? 'error' : ''}
+              />
+              {errors.estimatedOnsiteHours && <span className="error-message">{errors.estimatedOnsiteHours}</span>}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Start Date</label>
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>CRP Date (Code Complete) *</label>
+              <input
+                type="date"
+                name="crpDate"
+                value={formData.crpDate}
+                onChange={handleChange}
+                className={errors.crpDate ? 'error' : ''}
+              />
+              {errors.crpDate && <span className="error-message">{errors.crpDate}</span>}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>UAT Date</label>
+              <input
+                type="date"
+                name="uatDate"
+                value={formData.uatDate}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Go-Live Date</label>
+              <input
+                type="date"
+                name="goLiveDate"
+                value={formData.goLiveDate}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Jira Link</label>
+            <input
+              type="url"
+              name="jiraLink"
+              value={formData.jiraLink}
+              onChange={handleChange}
+              placeholder="https://jira.example.com/browse/PROJECT-123"
+            />
+          </div>
+
+          {project && (
+            <OnsiteScheduleManager
+              projectId={project.projectId}
+              uatDate={formData.uatDate}
+              goLiveDate={formData.goLiveDate}
+            />
+          )}
+
+          <div className="form-actions">
+            <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={saving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? 'Saving...' : (project ? 'Update' : 'Create')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default ProjectForm;

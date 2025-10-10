@@ -1,0 +1,446 @@
+.improved-capacity-view {
+  padding: 1.5rem;
+  background: #f8f9fa;
+}
+
+.capacity-loading {
+  text-align: center;
+  padding: 4rem;
+  color: #999;
+  font-size: 1.1rem;
+}
+
+/* Summary Cards */
+.capacity-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-label {
+  font-size: 0.85rem;
+  color: #666;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.card-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.card-sublabel {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+/* Unallocated Projects Section */
+.unallocated-section {
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 1.25rem 1.5rem;
+  background: #fff3cd;
+  border-bottom: 2px solid #ffc107;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.section-header:hover {
+  background: #ffe69c;
+}
+
+.section-header h3 {
+  margin: 0;
+  color: #856404;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle-icon {
+  color: #856404;
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.unallocated-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.unallocated-card {
+  background: #f8f9fa;
+  border: 2px solid #ffc107;
+  border-radius: 6px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.unallocated-card:hover {
+  border-color: #ff9800;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.project-header strong {
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.hours-badge {
+  background: #ff9800;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.project-customer {
+  color: #555;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.project-dates {
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.unallocated-card .btn {
+  width: 100%;
+}
+
+/* Weekly Capacity View */
+.weekly-capacity {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.weekly-capacity h3 {
+  margin: 0 0 1.5rem 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+}
+
+.weeks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.week-card {
+  background: #fafafa;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.week-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.week-card.selected {
+  border-color: #3498db;
+  background: #e3f2fd;
+}
+
+.week-card.normal {
+  border-left: 4px solid #27ae60;
+}
+
+.week-card.high {
+  border-left: 4px solid #f39c12;
+}
+
+.week-card.overloaded {
+  border-left: 4px solid #e74c3c;
+}
+
+.week-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.week-date {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.utilization-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.utilization-badge.normal {
+  background: #d4edda;
+  color: #155724;
+}
+
+.utilization-badge.high {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.utilization-badge.overloaded {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.capacity-progress {
+  margin-bottom: 1rem;
+}
+
+.progress-bar {
+  height: 24px;
+  background: #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  display: flex;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  display: inline-block;
+}
+
+/* Development hours - Blue gradient */
+.progress-fill.development,
+.progress-fill.dev-hours {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+/* UAT onsite hours - Orange/Amber gradient */
+.progress-fill.uat,
+.progress-fill.onsite-hours {
+  background: linear-gradient(90deg, #f39c12, #e67e22);
+}
+
+/* GoLive onsite hours - Red/Dark Orange gradient */
+.progress-fill.golive {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+/* Rounded corners for stacking */
+.progress-fill:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.progress-fill:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.progress-fill:only-child {
+  border-radius: 12px;
+}
+
+/* Legacy status-based fills (keep for compatibility) */
+.progress-fill.normal {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+}
+
+.progress-fill.high {
+  background: linear-gradient(90deg, #f39c12, #f1c40f);
+}
+
+.progress-fill.overloaded {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.dev-label {
+  color: #2980b9;
+  font-weight: 700;
+}
+
+.uat-label {
+  color: #e67e22;
+  font-weight: 700;
+}
+
+.golive-label {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.onsite-label {
+  color: #d35400;
+  font-weight: 700;
+}
+
+.week-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #888;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.week-projects {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #ddd;
+}
+
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-tag {
+  background: #3498db;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-item-card {
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all 0.2s;
+}
+
+.project-item-card:hover {
+  border-color: #3498db;
+  background: white;
+}
+
+.project-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.project-number {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+.project-customer {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.project-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #999;
+}
+
+.empty-state p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .capacity-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .unallocated-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .weeks-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .capacity-summary {
+    grid-template-columns: 1fr;
+  }
+}

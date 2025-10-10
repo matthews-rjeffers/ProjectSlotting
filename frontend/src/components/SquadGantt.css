@@ -1,0 +1,229 @@
+.squad-gantt {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.gantt-header {
+  margin-bottom: 1.5rem;
+}
+
+.gantt-header h2 {
+  color: #2c3e50;
+  margin-bottom: 0.75rem;
+}
+
+.gantt-info {
+  display: flex;
+  gap: 2rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.gantt-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #999;
+}
+
+.unallocated-projects {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.unallocated-projects h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  color: #856404;
+}
+
+.unallocated-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.unallocated-project {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #ffc107;
+  cursor: move;
+  transition: all 0.2s;
+}
+
+.unallocated-project:hover {
+  border-color: #ff9800;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.unallocated-project .project-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.unallocated-project .project-info strong {
+  color: #2c3e50;
+}
+
+.unallocated-project .project-info .hours {
+  color: #666;
+  background: #f0f0f0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.gantt-chart {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.gantt-timeline {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  min-width: fit-content;
+}
+
+.timeline-header,
+.timeline-subheader,
+.timeline-row {
+  display: grid;
+  grid-template-columns: 120px repeat(auto-fit, minmax(60px, 1fr));
+  border-bottom: 1px solid #ddd;
+}
+
+.timeline-header {
+  background: #2c3e50;
+  color: white;
+  font-weight: 600;
+}
+
+.timeline-subheader {
+  background: #34495e;
+  color: white;
+  font-size: 0.8rem;
+}
+
+.row-label {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  font-weight: 600;
+  background: #ecf0f1;
+  border-right: 1px solid #ddd;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+.week-header,
+.day-header {
+  padding: 0.5rem;
+  text-align: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.85rem;
+}
+
+.capacity-row {
+  min-height: 80px;
+}
+
+.capacity-cell {
+  padding: 0.5rem;
+  border-right: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  background: #fafafa;
+}
+
+.capacity-bar {
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.capacity-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.capacity-text {
+  font-size: 0.7rem;
+  text-align: center;
+  color: #666;
+}
+
+.projects-row {
+  min-height: 100px;
+}
+
+.project-cell {
+  padding: 0.5rem;
+  border-right: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 60px;
+}
+
+.project-bar {
+  background: #3498db;
+  color: white;
+  padding: 0.4rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  text-align: center;
+  cursor: move;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s;
+}
+
+.project-bar:hover {
+  background: #2980b9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.project-cell:empty {
+  background: white;
+}
+
+/* Drag and drop styling */
+.project-cell.drag-over,
+.capacity-cell.drag-over {
+  background: #e3f2fd;
+  border: 2px dashed #3498db;
+}
+
+/* Scrollbar styling */
+.gantt-chart::-webkit-scrollbar {
+  height: 8px;
+}
+
+.gantt-chart::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.gantt-chart::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.gantt-chart::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

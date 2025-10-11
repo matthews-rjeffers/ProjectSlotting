@@ -3,7 +3,7 @@ import { getSquads, createSquad, updateSquad, deleteSquad, getTeamMembers } from
 import TeamMemberManagement from './TeamMemberManagement';
 import './SquadManagement.css';
 
-function SquadManagement({ onClose, onSquadsUpdated }) {
+function SquadManagement({ onClose, onSquadsUpdated, initialSquad }) {
   const [squads, setSquads] = useState([]);
   const [editingSquad, setEditingSquad] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -16,8 +16,22 @@ function SquadManagement({ onClose, onSquadsUpdated }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadSquads();
-  }, []);
+    if (initialSquad) {
+      // If initialSquad is provided, go directly to edit mode for that squad
+      setEditingSquad(initialSquad);
+      setFormData({
+        squadName: initialSquad.squadName,
+        squadLeadName: initialSquad.squadLeadName
+      });
+      setShowAddForm(true); // Show the form immediately
+      setLoading(false);
+    } else {
+      // When used from SquadsPage with no initialSquad, assume we want to add a new squad
+      // Don't load squads list - just show the add form
+      setShowAddForm(true);
+      setLoading(false);
+    }
+  }, [initialSquad]);
 
   const loadSquads = async () => {
     try {
@@ -51,9 +65,8 @@ function SquadManagement({ onClose, onSquadsUpdated }) {
         await createSquad(payload);
       }
 
-      await loadSquads();
       onSquadsUpdated();
-      resetForm();
+      onClose(); // Close the modal after successful save
     } catch (error) {
       console.error('Error saving squad:', error);
       alert('Failed to save squad. Please try again.');
@@ -69,15 +82,24 @@ function SquadManagement({ onClose, onSquadsUpdated }) {
     setShowAddForm(true);
   };
 
-  const handleDelete = async (squad) => {
-    if (!window.confirm(`Are you sure you want to delete ${squad.squadName}? This cannot be undone if the squad has allocations.`)) {
+  const handleDelete = async () => {
+    if (!editingSquad) return;
+
+    // Check if squad has team members
+    const activeMembers = editingSquad.teamMembers?.filter(tm => tm.isActive).length || 0;
+    if (activeMembers > 0) {
+      alert(`Cannot delete ${editingSquad.squadName}. This squad has ${activeMembers} active team member(s). Please remove all team members before deleting the squad.`);
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${editingSquad.squadName}? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      await deleteSquad(squad.squadId);
-      await loadSquads();
+      await deleteSquad(editingSquad.squadId);
       onSquadsUpdated();
+      onClose();
     } catch (error) {
       console.error('Error deleting squad:', error);
       if (error.response?.data?.message) {
@@ -121,113 +143,42 @@ function SquadManagement({ onClose, onSquadsUpdated }) {
         </div>
 
         {loading ? (
-          <div className="loading">Loading squads...</div>
+          <div className="loading">Loading...</div>
         ) : (
-          <>
-            <div className="squad-management-actions">
-              {!showAddForm && (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="btn btn-primary"
-                >
-                  + Add Squad
-                </button>
-              )}
+          <form onSubmit={handleSubmit} className="squad-form">
+            <div className="form-row">
+              <div className="form-group">
+                <label>Squad Name *</label>
+                <input
+                  type="text"
+                  value={formData.squadName}
+                  onChange={(e) => setFormData({ ...formData, squadName: e.target.value })}
+                  className={errors.squadName ? 'error' : ''}
+                  placeholder="e.g., Squad Delta"
+                />
+                {errors.squadName && <span className="error-message">{errors.squadName}</span>}
+              </div>
+
+              <div className="form-group">
+                <label>Squad Lead Name</label>
+                <input
+                  type="text"
+                  value={formData.squadLeadName}
+                  onChange={(e) => setFormData({ ...formData, squadLeadName: e.target.value })}
+                  placeholder="e.g., John Doe"
+                />
+              </div>
             </div>
 
-            {showAddForm && (
-              <form onSubmit={handleSubmit} className="squad-form">
-                <h3>{editingSquad ? 'Edit Squad' : 'Add New Squad'}</h3>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Squad Name *</label>
-                    <input
-                      type="text"
-                      value={formData.squadName}
-                      onChange={(e) => setFormData({ ...formData, squadName: e.target.value })}
-                      className={errors.squadName ? 'error' : ''}
-                      placeholder="e.g., Squad Delta"
-                    />
-                    {errors.squadName && <span className="error-message">{errors.squadName}</span>}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Squad Lead Name</label>
-                    <input
-                      type="text"
-                      value={formData.squadLeadName}
-                      onChange={(e) => setFormData({ ...formData, squadLeadName: e.target.value })}
-                      placeholder="e.g., John Doe"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-actions">
-                  <button type="button" onClick={resetForm} className="btn btn-secondary">
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    {editingSquad ? 'Update' : 'Create'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="squads-list">
-              <h3>Current Squads</h3>
-              {squads.length === 0 ? (
-                <div className="empty-state">No squads yet. Click "Add Squad" to create one.</div>
-              ) : (
-                <div className="squads-grid">
-                  {squads.map(squad => (
-                    <div key={squad.squadId} className="squad-card">
-                      <div className="squad-card-header">
-                        <h4>{squad.squadName}</h4>
-                        <div className="squad-card-actions">
-                          <button
-                            onClick={() => handleEdit(squad)}
-                            className="btn-icon"
-                            title="Edit Squad"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDelete(squad)}
-                            className="btn-icon"
-                            title="Delete Squad"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="squad-card-body">
-                        <div className="squad-info">
-                          <strong>Squad Lead:</strong> {squad.squadLeadName}
-                        </div>
-                        <div className="squad-info">
-                          <strong>Team Size:</strong> {squad.teamMembers?.filter(tm => tm.isActive).length || 0} members
-                        </div>
-                        <div className="squad-info">
-                          <strong>Daily Capacity:</strong>{' '}
-                          {squad.teamMembers?.filter(tm => tm.isActive).reduce((sum, tm) => sum + tm.dailyCapacityHours, 0).toFixed(1) || 0} hours
-                        </div>
-                      </div>
-
-                      <div className="squad-card-footer">
-                        <button
-                          onClick={() => handleManageTeam(squad)}
-                          className="btn btn-small btn-primary"
-                        >
-                          Manage Team
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="form-actions">
+              <button type="button" onClick={onClose} className="btn btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                {editingSquad ? 'Update Squad' : 'Create Squad'}
+              </button>
             </div>
-          </>
+          </form>
         )}
       </div>
     </div>

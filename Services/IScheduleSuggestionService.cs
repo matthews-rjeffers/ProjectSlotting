@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ProjectScheduler.Models;
 
@@ -6,8 +7,22 @@ namespace ProjectScheduler.Services
 {
     public interface IScheduleSuggestionService
     {
-        Task<ScheduleSuggestion> GetScheduleSuggestion(int projectId, int squadId, decimal? bufferPercentage = null);
+        Task<ScheduleSuggestion> GetScheduleSuggestion(
+            int projectId,
+            int squadId,
+            decimal? bufferPercentage = null,
+            string? algorithmType = null,
+            DateTime? startDate = null);
         Task<bool> ApplyScheduleSuggestion(int projectId, int squadId, ScheduleSuggestion suggestion);
+    }
+
+    // Helper class to track flexible allocation schedule
+    public class AllocationSchedule
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public Dictionary<DateTime, decimal> DailyAllocations { get; set; } = new();
+        public decimal TotalHoursAllocated { get; set; }
     }
 
     public class ScheduleSuggestion
@@ -25,5 +40,8 @@ namespace ProjectScheduler.Services
         public int EstimatedDurationDays { get; set; }
         public bool CanAllocate { get; set; }
         public string Message { get; set; } = string.Empty;
+
+        // Flexible allocation schedule - maps date to hours allocated
+        public Dictionary<DateTime, decimal>? AllocationSchedule { get; set; }
     }
 }

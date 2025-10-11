@@ -24,7 +24,12 @@ namespace ProjectScheduler.Services
             _allocationService = allocationService;
         }
 
-        public async Task<ScheduleSuggestion> GetScheduleSuggestion(int projectId, int squadId, decimal? bufferPercentage = null)
+        public async Task<ScheduleSuggestion> GetScheduleSuggestion(
+            int projectId,
+            int squadId,
+            decimal? bufferPercentage = null,
+            string? algorithmType = null,
+            DateTime? startDate = null)
         {
             var project = await _context.Projects.FindAsync(projectId);
             if (project == null)
@@ -72,37 +77,30 @@ namespace ProjectScheduler.Services
                 };
             }
 
-            // Find the earliest available start date
-            var searchDate = DateTime.Today.AddDays(1); // Start from tomorrow
-            var maxSearchDays = 365; // Look up to 1 year ahead
-            var searchEndDate = searchDate.AddDays(maxSearchDays);
+            // Use provided start date or default to tomorrow
+            var searchDate = startDate ?? DateTime.Today.AddDays(1);
 
-            DateTime? suggestedStartDate = null;
+            // Default to greedy algorithm if not specified
+            var useGreedy = string.IsNullOrEmpty(algorithmType) || algorithmType.ToLower() == "greedy";
+
+            Console.WriteLine($"[SCHEDULE SUGGESTION] Using {(useGreedy ? "Greedy" : "Strict")} algorithm, starting from {searchDate:yyyy-MM-dd}");
+
+            AllocationSchedule? schedule = null;
             DateTime? estimatedEndDate = null;
 
-            while (searchDate < searchEndDate && suggestedStartDate == null)
+            if (useGreedy)
             {
-                // Skip weekends
-                if (searchDate.DayOfWeek == DayOfWeek.Saturday || searchDate.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    searchDate = searchDate.AddDays(1);
-                    continue;
-                }
-
-                // Check if we can allocate starting from this date
-                var canStart = await TryFindAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
-
-                if (canStart.HasValue)
-                {
-                    suggestedStartDate = searchDate;
-                    estimatedEndDate = canStart.Value;
-                    break;
-                }
-
-                searchDate = searchDate.AddDays(1);
+                // Try flexible/greedy allocation
+                schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
+            }
+            else
+            {
+                // Try strict allocation
+                estimatedEndDate = await TryFindAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
             }
 
-            if (suggestedStartDate == null)
+            // Check if we found a schedule (either greedy or strict)
+            if (schedule == null && estimatedEndDate == null)
             {
                 return new ScheduleSuggestion
                 {
@@ -117,12 +115,28 @@ namespace ProjectScheduler.Services
                 };
             }
 
-            // Calculate dates based on the found window
-            // We know estimatedEndDate has a value because we checked for null above
-            // The estimatedEndDate is when ALL dev hours (with buffer) are allocated
+            // Determine the dates based on which algorithm was used
+            DateTime actualStartDate;
+            DateTime actualEndDate;
+            Dictionary<DateTime, decimal>? allocationSchedule = null;
+
+            if (useGreedy && schedule != null)
+            {
+                actualStartDate = schedule.StartDate;
+                actualEndDate = schedule.EndDate;
+                allocationSchedule = schedule.DailyAllocations;
+            }
+            else
+            {
+                actualStartDate = searchDate;
+                actualEndDate = estimatedEndDate!.Value;
+            }
+
+            // Calculate dates based on the found schedule
+            // The EndDate is when ALL dev hours (with buffer) are allocated
             // Timeline: Start -> [dev work with buffer] -> CRP -> [~1 week] -> UAT -> [2 weeks] -> Go-Live
             // Dev hours are allocated through UAT date (includes final testing/fixes)
-            var devCompleteDate = estimatedEndDate!.Value;
+            var devCompleteDate = actualEndDate;
 
             // CRP is when code is ready for production testing - very close to UAT start
             // Let's set CRP about 3-5 working days before we'd start UAT
@@ -135,14 +149,18 @@ namespace ProjectScheduler.Services
             var goLiveDate = AddWorkingDays(uatDate, 10);
 
             // Calculate working days duration
-            var durationDays = GetWorkingDays(suggestedStartDate.Value, estimatedEndDate.Value);
+            var durationDays = GetWorkingDays(actualStartDate, actualEndDate);
+
+            var message = useGreedy
+                ? $"Project can be scheduled starting {actualStartDate:MMM dd, yyyy} (using Greedy Algorithm over {allocationSchedule?.Count ?? durationDays} days)"
+                : $"Project can be scheduled starting {actualStartDate:MMM dd, yyyy} (using Strict Algorithm over {durationDays} days)";
 
             return new ScheduleSuggestion
             {
                 ProjectId = projectId,
                 SquadId = squadId,
                 SquadName = squad.SquadName,
-                SuggestedStartDate = suggestedStartDate.Value,
+                SuggestedStartDate = actualStartDate,
                 EstimatedCrpDate = crpDate,
                 EstimatedUatDate = uatDate,
                 EstimatedGoLiveDate = goLiveDate,
@@ -151,7 +169,8 @@ namespace ProjectScheduler.Services
                 BufferedDevHours = bufferedHours,
                 EstimatedDurationDays = durationDays,
                 CanAllocate = true,
-                Message = $"Project can be scheduled starting {suggestedStartDate.Value:MMM dd, yyyy}"
+                Message = message,
+                AllocationSchedule = allocationSchedule
             };
         }
 
@@ -180,20 +199,44 @@ namespace ProjectScheduler.Services
                 project.BufferPercentage = suggestion.BufferPercentage;
                 project.UpdatedDate = DateTime.UtcNow;
 
-                // Use buffered hours for allocation (but don't save it to EstimatedDevHours)
-                // Allocate through UAT date since that's when all dev work (including final testing) completes
-                var allocationSuccess = await _allocationService.AllocateProjectToSquad(
-                    projectId,
-                    squadId,
-                    suggestion.SuggestedStartDate,
-                    suggestion.EstimatedUatDate,
-                    suggestion.BufferedDevHours
-                );
-
-                if (!allocationSuccess)
+                // Use flexible allocation schedule if available, otherwise fall back to uniform allocation
+                if (suggestion.AllocationSchedule != null && suggestion.AllocationSchedule.Any())
                 {
-                    await transaction.RollbackAsync();
-                    return false;
+                    Console.WriteLine($"[APPLY SCHEDULE] Using flexible allocation with {suggestion.AllocationSchedule.Count} days");
+
+                    // Create allocations based on the flexible schedule
+                    foreach (var (date, hours) in suggestion.AllocationSchedule)
+                    {
+                        var allocation = new ProjectAllocation
+                        {
+                            ProjectId = projectId,
+                            SquadId = squadId,
+                            AllocationDate = DateOnly.FromDateTime(date),
+                            AllocatedHours = hours,
+                            AllocationType = "Development",
+                            CreatedDate = DateTime.UtcNow
+                        };
+                        _context.ProjectAllocations.Add(allocation);
+                        Console.WriteLine($"[APPLY SCHEDULE] {date:yyyy-MM-dd}: {hours}h");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[APPLY SCHEDULE] Using uniform allocation");
+                    // Fall back to uniform allocation
+                    var allocationSuccess = await _allocationService.AllocateProjectToSquad(
+                        projectId,
+                        squadId,
+                        suggestion.SuggestedStartDate,
+                        suggestion.EstimatedUatDate,
+                        suggestion.BufferedDevHours
+                    );
+
+                    if (!allocationSuccess)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
                 }
 
                 // Clear existing onsite schedules for this project
@@ -282,6 +325,70 @@ namespace ProjectScheduler.Services
             }
 
             return null; // Couldn't find a complete window
+        }
+
+        // New flexible allocation algorithm that spreads hours across partial capacity
+        private async Task<AllocationSchedule?> TryFindFlexibleAllocationWindow(
+            int squadId,
+            DateTime startDate,
+            decimal totalHours,
+            decimal dailyCapacity,
+            decimal minHoursPerDay = 2m,  // Don't allocate less than 2 hours/day
+            int maxDurationDays = 180)    // Don't stretch project beyond 180 working days
+        {
+            var currentDate = startDate;
+            var hoursAllocated = 0m;
+            var schedule = new AllocationSchedule { StartDate = startDate };
+            var workingDaysUsed = 0;
+
+            Console.WriteLine($"[FLEXIBLE SCHEDULE] Starting search from {startDate:yyyy-MM-dd} for {totalHours}h");
+
+            while (hoursAllocated < totalHours && workingDaysUsed < maxDurationDays)
+            {
+                // Skip weekends
+                if (currentDate.DayOfWeek == DayOfWeek.Saturday || currentDate.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    currentDate = currentDate.AddDays(1);
+                    continue;
+                }
+
+                // Get remaining capacity for this day
+                var remainingCapacity = await _capacityService.GetSquadRemainingCapacity(squadId, currentDate);
+
+                // Calculate how much we want to allocate
+                var hoursRemaining = totalHours - hoursAllocated;
+                var idealHours = Math.Min(dailyCapacity, hoursRemaining);
+
+                // Take whatever capacity is available (up to what we need)
+                var hoursToAllocate = Math.Min(remainingCapacity, idealHours);
+
+                Console.WriteLine($"[FLEXIBLE SCHEDULE] {currentDate:yyyy-MM-dd}: Remaining capacity={remainingCapacity}h, Ideal={idealHours}h, Allocating={hoursToAllocate}h");
+
+                // Only allocate if we meet minimum threshold OR it's the last bit we need
+                if (hoursToAllocate >= minHoursPerDay || hoursToAllocate >= hoursRemaining)
+                {
+                    if (hoursToAllocate > 0)
+                    {
+                        schedule.DailyAllocations[currentDate] = hoursToAllocate;
+                        hoursAllocated += hoursToAllocate;
+                        workingDaysUsed++;
+                    }
+                }
+
+                if (hoursAllocated >= totalHours)
+                {
+                    schedule.EndDate = currentDate;
+                    schedule.TotalHoursAllocated = hoursAllocated;
+                    Console.WriteLine($"[FLEXIBLE SCHEDULE] Successfully allocated {hoursAllocated}h over {workingDaysUsed} working days");
+                    return schedule; // Successfully allocated all hours
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            // Couldn't allocate all hours within constraints
+            Console.WriteLine($"[FLEXIBLE SCHEDULE] Failed to allocate all hours. Allocated {hoursAllocated}/{totalHours}h over {workingDaysUsed} days");
+            return null;
         }
 
         private DateTime AddWorkingDays(DateTime startDate, int workingDays)

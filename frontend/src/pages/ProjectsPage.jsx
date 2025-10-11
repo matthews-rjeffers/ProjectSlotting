@@ -250,7 +250,7 @@ const ProjectsPage = () => {
           project={scheduleSuggestionProject}
           squads={squads}
           onClose={() => setScheduleSuggestionProject(null)}
-          onApplied={handleScheduleSuggestionApplied}
+          onSuccess={handleScheduleSuggestionApplied}
         />
       )}
 

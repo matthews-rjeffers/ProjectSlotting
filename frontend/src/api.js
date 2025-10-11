@@ -35,12 +35,16 @@ export const canAllocateProject = (squadId, startDate, crpDate, totalDevHours) =
   api.post('/projects/can-allocate', { squadId, startDate, crpDate, totalDevHours });
 export const previewProjectAllocation = (projectId, squadId) =>
   api.get(`/projects/${projectId}/preview-allocation/${squadId}`);
-export const getScheduleSuggestion = (projectId, squadId, bufferPercentage) =>
+export const getScheduleSuggestion = (projectId, squadId, bufferPercentage, algorithmType, startDate) =>
   api.get(`/projects/${projectId}/schedule-suggestion/${squadId}`, {
-    params: bufferPercentage ? { bufferPercentage } : {}
+    params: {
+      ...(bufferPercentage && { bufferPercentage }),
+      ...(algorithmType && { algorithmType }),
+      ...(startDate && { startDate })
+    }
   });
-export const applyScheduleSuggestion = (projectId, squadId, bufferPercentage) =>
-  api.post(`/projects/${projectId}/apply-schedule-suggestion`, { squadId, bufferPercentage });
+export const applyScheduleSuggestion = (projectId, squadId, bufferPercentage, algorithmType, startDate) =>
+  api.post(`/projects/${projectId}/apply-schedule-suggestion`, { squadId, bufferPercentage, algorithmType, startDate });
 
 // Team Members API
 export const getTeamMembers = (squadId) =>

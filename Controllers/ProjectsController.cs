@@ -205,9 +205,19 @@ namespace ProjectScheduler.Controllers
 
         // GET: api/Projects/5/schedule-suggestion/3
         [HttpGet("{projectId}/schedule-suggestion/{squadId}")]
-        public async Task<ActionResult<ScheduleSuggestion>> GetScheduleSuggestion(int projectId, int squadId, [FromQuery] decimal? bufferPercentage = null)
+        public async Task<ActionResult<ScheduleSuggestion>> GetScheduleSuggestion(
+            int projectId,
+            int squadId,
+            [FromQuery] decimal? bufferPercentage = null,
+            [FromQuery] string? algorithmType = null,
+            [FromQuery] DateTime? startDate = null)
         {
-            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(projectId, squadId, bufferPercentage);
+            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(
+                projectId,
+                squadId,
+                bufferPercentage,
+                algorithmType,
+                startDate);
             return Ok(suggestion);
         }
 
@@ -216,7 +226,12 @@ namespace ProjectScheduler.Controllers
         public async Task<IActionResult> ApplyScheduleSuggestion(int projectId, [FromBody] ApplyScheduleRequest request)
         {
             // First get the suggestion to verify it
-            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(projectId, request.SquadId, request.BufferPercentage);
+            var suggestion = await _scheduleSuggestionService.GetScheduleSuggestion(
+                projectId,
+                request.SquadId,
+                request.BufferPercentage,
+                request.AlgorithmType,
+                request.StartDate);
 
             if (!suggestion.CanAllocate)
             {
@@ -257,5 +272,7 @@ namespace ProjectScheduler.Controllers
     {
         public int SquadId { get; set; }
         public decimal? BufferPercentage { get; set; }
+        public string? AlgorithmType { get; set; }
+        public DateTime? StartDate { get; set; }
     }
 }

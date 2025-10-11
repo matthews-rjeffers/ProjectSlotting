@@ -2,10 +2,34 @@ import { useState, useEffect } from 'react';
 import { getScheduleSuggestion, applyScheduleSuggestion, getSquads } from '../api';
 import './ScheduleSuggestionModal.css';
 
+// Helper function to get next Monday
+const getNextMonday = () => {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+  let daysUntilMonday;
+  if (dayOfWeek === 1) {
+    // Already Monday -> use next Monday (7 days from now)
+    daysUntilMonday = 7;
+  } else if (dayOfWeek === 0) {
+    // Sunday -> tomorrow is Monday
+    daysUntilMonday = 1;
+  } else {
+    // Tuesday (2) - Saturday (6) -> calculate days until next Monday
+    daysUntilMonday = 8 - dayOfWeek;
+  }
+
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilMonday);
+  return nextMonday.toISOString().split('T')[0];
+};
+
 const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [squads, setSquads] = useState([]);
   const [selectedSquadId, setSelectedSquadId] = useState('');
   const [bufferPercentage, setBufferPercentage] = useState(project.bufferPercentage || 20);
+  const [algorithmType, setAlgorithmType] = useState('greedy'); // 'greedy' or 'strict'
+  const [startDate, setStartDate] = useState(getNextMonday());
   const [suggestion, setSuggestion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -41,7 +65,9 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
       const response = await getScheduleSuggestion(
         project.projectId,
         selectedSquadId,
-        bufferPercentage
+        bufferPercentage,
+        algorithmType,
+        startDate
       );
       setSuggestion(response.data);
     } catch (error) {
@@ -63,7 +89,9 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
       await applyScheduleSuggestion(
         project.projectId,
         selectedSquadId,
-        bufferPercentage
+        bufferPercentage,
+        algorithmType,
+        startDate
       );
       onSuccess();
       onClose();
@@ -114,6 +142,31 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="control-group">
+              <label htmlFor="algorithm-select">Algorithm Type</label>
+              <select
+                id="algorithm-select"
+                value={algorithmType}
+                onChange={(e) => setAlgorithmType(e.target.value)}
+                disabled={loading || applying}
+              >
+                <option value="greedy">Greedy Algorithm (Flexible - uses partial capacity)</option>
+                <option value="strict">Strict Algorithm (Requires full daily capacity)</option>
+              </select>
+            </div>
+
+            <div className="control-group">
+              <label htmlFor="start-date-input">Start Date</label>
+              <input
+                type="date"
+                id="start-date-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={loading || applying}
+              />
+              <small className="field-hint">Defaults to next Monday</small>
             </div>
 
             <div className="control-group">

@@ -4,6 +4,7 @@ import SquadsPage from './pages/SquadsPage';
 import TeamsPage from './pages/TeamsPage';
 import CapacityPage from './pages/CapacityPage';
 import ProjectsPage from './pages/ProjectsPage';
+import AiQueryPage from './pages/AiQueryPage';
 import './App.css';
 
 function App() {
@@ -25,6 +26,9 @@ function App() {
             <NavLink to="/teams" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               Manage Teams
             </NavLink>
+            <NavLink to="/ai-query" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              Ask Nexus
+            </NavLink>
           </nav>
         </header>
 
@@ -34,6 +38,7 @@ function App() {
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/squads" element={<SquadsPage />} />
           <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/ai-query" element={<AiQueryPage />} />
         </Routes>
       </div>
     </Router>

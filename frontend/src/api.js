@@ -60,4 +60,7 @@ export const createOnsiteSchedule = (data) => api.post('/onsiteschedules', data)
 export const updateOnsiteSchedule = (id, data) => api.put(`/onsiteschedules/${id}`, data);
 export const deleteOnsiteSchedule = (id) => api.delete(`/onsiteschedules/${id}`);
 
+// AI Query API
+export const executeAiQuery = (question) => api.post('/aiquery', { question });
+
 export default api;

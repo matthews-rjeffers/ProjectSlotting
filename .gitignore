@@ -49,6 +49,7 @@ yarn-error.log*
 # Frontend build output
 frontend/dist/
 frontend/build/
+frontend/.vite/
 
 # Environment variables
 .env

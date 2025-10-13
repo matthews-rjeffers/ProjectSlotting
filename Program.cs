@@ -35,6 +35,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<ICapacityService, CapacityService>();
 builder.Services.AddScoped<IAllocationService, AllocationService>();
 builder.Services.AddScoped<IScheduleSuggestionService, ScheduleSuggestionService>();
+builder.Services.AddScoped<IAiQueryService, AiQueryService>();
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>
@@ -42,7 +43,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+            policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:5173")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });

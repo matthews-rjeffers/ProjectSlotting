@@ -14,83 +14,55 @@ I've successfully installed the following MCP servers:
 
 ## Configuration for Claude Code (VS Code Extension)
 
-Since you're using Claude Code in VS Code, the MCP configuration is done in VS Code settings.
+**IMPORTANT**: Claude Code uses a `.mcp.json` file in your project root, NOT VS Code settings.json!
 
-### Step 1: Open VS Code Settings
+### Step 1: Create `.mcp.json` File
 
-1. Press `Ctrl+Shift+P` to open Command Palette
-2. Type "Preferences: Open User Settings (JSON)"
-3. Press Enter
-
-### Step 2: Add MCP Configuration
-
-Add this to your `settings.json`:
+Create a file named `.mcp.json` in your project root (`c:\Learning\DEMO\.mcp.json`):
 
 ```json
 {
-  "claude.mcpServers": {
+  "mcpServers": {
     "sequential-thinking": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "c:\\Learning\\DEMO"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "c:\\Learning\\DEMO"]
     },
     "puppeteer": {
       "command": "npx",
-      "args": [
-        "-y",
-        "puppeteer-mcp-server"
-      ]
+      "args": ["-y", "puppeteer-mcp-server"]
     },
     "memory": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
     },
     "fetch": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-fetch"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
     },
     "github": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-github"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_personal_access_token_here"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
       }
     },
     "git": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-git",
-        "--repository",
-        "c:\\Learning\\DEMO"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-git", "--repository", "c:\\Learning\\DEMO"]
     }
   }
 }
 ```
 
-### Step 3: Restart VS Code
+**Note**: The `.mcp.json` file has already been created in this project!
 
-After adding the configuration, restart VS Code completely to activate the MCP servers.
+### Step 2: Restart VS Code
+
+After creating the `.mcp.json` file, restart VS Code completely to activate the MCP servers.
 
 ## How to Use MCP Servers
 
@@ -196,15 +168,24 @@ Once configured, you can test by asking me:
 ## Troubleshooting
 
 ### MCP servers not showing up?
-1. Restart VS Code completely
-2. Check the Output panel for "Claude" logs
-3. Verify NPM packages are installed globally: `npm list -g --depth=0`
+1. **Check for `.mcp.json` file** in project root (NOT settings.json!)
+2. Restart VS Code completely (close all windows, not just reload)
+3. Check the Output panel (Ctrl+Shift+U) → Select "Claude Code" from dropdown
+4. Look for messages like "Starting MCP server: sequential-thinking"
+5. Verify NPM/Node.js is working: `npx --version`
+
+### Common Issues:
+- **Wrong configuration location**: MCP config must be in `.mcp.json`, not `settings.json`
+- **No restart**: Must completely close and reopen VS Code after creating `.mcp.json`
+- **Path issues**: Ensure Node.js/NPM is in your PATH
 
 ### Permission errors?
 Run VS Code as Administrator on Windows
 
-### NPX not found?
-Make sure Node.js is in your PATH and restart VS Code
+### Checking Output Logs:
+1. Press `Ctrl+Shift+U` to open Output panel
+2. Select "Claude Code" from the dropdown (top-right of Output panel)
+3. Look for MCP server startup messages or errors
 
 ## Benefits for This Project
 
@@ -220,15 +201,16 @@ With these MCP servers installed, I can:
 
 ## Next Steps
 
-1. ✅ MCP servers are configured in VS Code settings
-2. ⏳ Add GitHub Personal Access Token to settings (if using GitHub server)
+1. ✅ `.mcp.json` file created in project root
+2. ⏳ Add GitHub Personal Access Token to `.mcp.json` (if using GitHub server)
 3. ⏳ Restart VS Code to activate new servers
-4. ✅ Start using MCP-enhanced features!
+4. ⏳ Verify in Output logs (Ctrl+Shift+U → "Claude Code")
+5. ✅ Start using MCP-enhanced features!
 
 ### To Add GitHub Token:
 1. Go to https://github.com/settings/tokens
 2. Generate a new token with repo permissions
-3. Replace `<your_github_token_here>` in settings.json
+3. Replace `"your_token_here"` in `.mcp.json` (line 50)
 4. Restart VS Code
 
 Let me know if you need help with any of these steps!

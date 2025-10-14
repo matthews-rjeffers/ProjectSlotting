@@ -32,7 +32,9 @@ public class SquadRecommendationService : ISquadRecommendationService
             return new List<SquadRecommendation>();
         }
 
-        var squads = await _context.Squads.ToListAsync();
+        var squads = await _context.Squads
+            .Where(s => s.IsActive)
+            .ToListAsync();
         var recommendations = new List<SquadRecommendation>();
 
         foreach (var squad in squads)

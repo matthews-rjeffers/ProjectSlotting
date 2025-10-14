@@ -13,6 +13,8 @@ public partial class OnsiteSchedule
 
     public int EngineerCount { get; set; }
 
+    public int TotalHours { get; set; }
+
     public string OnsiteType { get; set; } = null!;
 
     public DateTime CreatedDate { get; set; }

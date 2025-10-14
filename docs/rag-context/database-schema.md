@@ -131,7 +131,8 @@ Onsite/UAT scheduling for projects.
 - `ProjectId` (int, FK): References Projects.ProjectId
 - `WeekStartDate` (date): Start date of the onsite week
 - `EngineerCount` (int): Number of engineers needed onsite
-- `OnsiteType` (string): Type of onsite work (e.g., "UAT", "Go-Live")
+- `TotalHours` (int): Total hours allocated for the onsite week (e.g., 40 hours)
+- `OnsiteType` (string): Type of onsite work (e.g., "UAT", "GoLive")
 - `CreatedDate` (datetime): When schedule was created
 - `UpdatedDate` (datetime, nullable): When schedule was last updated
 

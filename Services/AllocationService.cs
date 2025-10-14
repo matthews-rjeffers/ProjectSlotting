@@ -91,29 +91,29 @@ namespace ProjectScheduler.Services
                 var weekEnd = weekStart.AddDays(4); // Monday to Friday
                 var workingDays = GetWorkingDays(weekStart, weekEnd);
 
-                // 40 hours per engineer per week
-                var hoursPerDay = (schedule.EngineerCount * 40m) / workingDays.Count;
+                // Use TotalHours from the schedule (user-defined)
+                var hoursPerDay = (decimal)schedule.TotalHours / workingDays.Count;
 
                 Console.WriteLine($"[ALLOCATION DEBUG] Processing onsite schedule for week {weekStart:yyyy-MM-dd}");
-                Console.WriteLine($"[ALLOCATION DEBUG] Engineer count: {schedule.EngineerCount}, Type: {schedule.OnsiteType}");
-                Console.WriteLine($"[ALLOCATION DEBUG] Working days: {workingDays.Count}, Hours per day: {hoursPerDay}");
+                Console.WriteLine($"[ALLOCATION DEBUG] Engineer count: {schedule.EngineerCount}, Total hours: {schedule.TotalHours}h, Type: {schedule.OnsiteType}");
+                Console.WriteLine($"[ALLOCATION DEBUG] Working days: {workingDays.Count}, Hours per day: {hoursPerDay}h");
 
                 foreach (var day in workingDays)
                 {
                     var dateOnly = DateOnly.FromDateTime(day);
 
-                    // Skip if this date was already allocated in dev phase
-                    if (allocations.Any(a => a.AllocationDate == dateOnly))
-                    {
-                        Console.WriteLine($"[ALLOCATION DEBUG] Date: {day:yyyy-MM-dd} - SKIPPING (already allocated in dev phase)");
-                        continue;
-                    }
-
-                    // Check if we have capacity
+                    // Check if we have capacity (onsite can overlap with dev work)
                     var dailyCapacity = await _capacityService.GetSquadDailyCapacity(squadId);
-                    var allocatedHours = await _context.ProjectAllocations
+
+                    // Include hours from database AND from local allocations list (dev phase)
+                    var dbAllocatedHours = await _context.ProjectAllocations
                         .Where(pa => pa.SquadId == squadId && pa.AllocationDate == dateOnly)
                         .SumAsync(pa => pa.AllocatedHours);
+                    var localAllocatedHours = allocations
+                        .Where(a => a.AllocationDate == dateOnly)
+                        .Sum(a => a.AllocatedHours);
+                    var allocatedHours = dbAllocatedHours + localAllocatedHours;
+
                     var remainingCapacity = dailyCapacity - allocatedHours;
 
                     Console.WriteLine($"[ALLOCATION DEBUG] Date: {day:yyyy-MM-dd} ({day.DayOfWeek})");
@@ -129,6 +129,7 @@ namespace ProjectScheduler.Services
                         return false;
                     }
 
+                    // Add onsite allocation (can coexist with dev on same day)
                     allocations.Add(new ProjectAllocation
                     {
                         ProjectId = projectId,
@@ -139,7 +140,7 @@ namespace ProjectScheduler.Services
                         CreatedDate = DateTime.UtcNow
                     });
 
-                    Console.WriteLine($"[ALLOCATION DEBUG]   Added {hoursPerDay}h allocation");
+                    Console.WriteLine($"[ALLOCATION DEBUG]   Added {hoursPerDay}h {schedule.OnsiteType} allocation");
                 }
             }
 
@@ -318,9 +319,9 @@ namespace ProjectScheduler.Services
 
                 var weekEnd = weekStart.AddDays(4);
                 var workingDays = GetWorkingDays(weekStart, weekEnd);
-                var hoursPerDay = (schedule.EngineerCount * 40m) / workingDays.Count;
+                var hoursPerDay = (decimal)schedule.TotalHours / workingDays.Count;
 
-                weeklyData[weekStart].PreviewOnsiteHours += schedule.EngineerCount * 40m;
+                weeklyData[weekStart].PreviewOnsiteHours += schedule.TotalHours;
             }
 
             // Calculate utilization and check capacity

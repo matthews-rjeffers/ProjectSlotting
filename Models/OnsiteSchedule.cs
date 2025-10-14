@@ -19,6 +19,10 @@ namespace ProjectScheduler.Models
         public int EngineerCount { get; set; }
 
         [Required]
+        [Range(1, 200)]
+        public int TotalHours { get; set; } = 40; // Total hours for the onsite week
+
+        [Required]
         [MaxLength(20)]
         public string OnsiteType { get; set; } = "UAT"; // "UAT" or "GoLive"
 

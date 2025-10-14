@@ -38,6 +38,8 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
           const allocResponse = await getProjectAllocations(project.projectId);
           const allAllocations = allocResponse.data;
 
+          console.log(`[ALLOCATION LOAD] Project ${project.projectId} (${project.projectNumber}): ${allAllocations.length} allocations`);
+
           // Track if project is allocated to ANY squad
           if (allAllocations.length > 0) {
             allAllocationsMap[project.projectId] = allAllocations;
@@ -47,6 +49,11 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
           const squadAllocations = allAllocations.filter(a => a.squadId === squadId);
           if (squadAllocations.length > 0) {
             squadAllocationsMap[project.projectId] = squadAllocations;
+            console.log(`[ALLOCATION LOAD] Squad ${squadId} has ${squadAllocations.length} allocations for project ${project.projectId}`);
+            // Log first few allocations for debugging
+            squadAllocations.slice(0, 3).forEach(a => {
+              console.log(`  - ${a.allocationDate}: ${a.allocatedHours}h (${a.allocationType})`);
+            });
           }
         } catch (error) {
           console.error(`Error loading allocations for project ${project.projectId}:`, error);
@@ -69,7 +76,9 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
   };
 
   const calculateWeeklyData = (capacity, allocations) => {
+    console.log(`[DATE RANGE DEBUG] Date range: ${dateRange.startDate} to ${dateRange.endDate}`);
     const weeks = getWeeksInRange();
+    console.log(`[DATE RANGE DEBUG] Generated ${weeks.length} weeks`);
     const weeklyAggregated = weeks.map(week => {
       let totalCapacity = 0;
       let totalAllocated = 0;
@@ -79,8 +88,24 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
       let totalUATHours = 0;
       let totalGoLiveHours = 0;
 
+      // Debug: Log week dates
+      const weekLabel = `${week.start.toLocaleDateString()} - ${week.end.toLocaleDateString()}`;
+      console.log(`[WEEK DEBUG] Processing week: ${weekLabel}, ${week.dates.length} dates`);
+
       week.dates.forEach(date => {
-        const dateKey = date.toISOString().split('T')[0];
+        // Use local date formatting to avoid UTC timezone shifts
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+
+        // Debug December 15 specifically
+        if (date.getMonth() === 11 && date.getDate() === 15) {
+          console.log(`[DEC 15 DEBUG] Local date: ${date.toLocaleDateString()}, Local dateKey: ${dateKey}`);
+          console.log(`[DEC 15 DEBUG] ISO would be: ${date.toISOString().split('T')[0]}`);
+          console.log(`[DEC 15 DEBUG] Looking for allocations with this dateKey in project 8`);
+        }
+
         const dayCapacity = capacity[dateKey] || {};
 
         // Calculate daily capacity from team members if not in API response
@@ -93,8 +118,24 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
         // Calculate allocated hours for this date from allocations, separating by type
         let dayAllocatedHours = 0;
         Object.entries(allocations).forEach(([projectId, allocs]) => {
-          const allocation = allocs.find(a => a.allocationDate.split('T')[0] === dateKey);
-          if (allocation) {
+          // Debug December 15 allocation matching
+          if (date.getMonth() === 11 && date.getDate() === 15 && projectId === '8') {
+            console.log(`[DEC 15 DEBUG] Checking ${allocs.length} allocations for project 8`);
+            // Show allocations around Dec 15 specifically
+            const dec15Allocs = allocs.filter(a => {
+              const allocDate = a.allocationDate.split('T')[0];
+              return allocDate >= '2025-12-13' && allocDate <= '2025-12-20';
+            });
+            console.log(`[DEC 15 DEBUG] Found ${dec15Allocs.length} allocations between Dec 13-20:`);
+            dec15Allocs.forEach(a => {
+              const allocDateKey = a.allocationDate.split('T')[0];
+              console.log(`  ${a.allocationDate} -> dateKey: ${allocDateKey}, type: ${a.allocationType}, hours: ${a.allocatedHours}, matches: ${allocDateKey === dateKey}`);
+            });
+          }
+
+          // Use filter instead of find to get ALL allocations for this date (dev + UAT + GoLive can overlap)
+          const dayAllocations = allocs.filter(a => a.allocationDate.split('T')[0] === dateKey);
+          dayAllocations.forEach(allocation => {
             const hours = allocation.allocatedHours || 0;
             dayAllocatedHours += hours;
 
@@ -102,6 +143,7 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
             const allocType = allocation.allocationType;
             if (allocType === 'UAT') {
               totalUATHours += hours;
+              console.log(`[UAT DEBUG] Date: ${dateKey}, Hours: ${hours}, Total UAT so far: ${totalUATHours}`);
             } else if (allocType === 'GoLive') {
               totalGoLiveHours += hours;
             } else {
@@ -110,7 +152,7 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
             }
 
             projectsThisWeek.add(parseInt(projectId));
-          }
+          });
         });
 
         // Use calculated allocated hours (more reliable than API response)
@@ -167,6 +209,13 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
       }
 
       if (datesInWeek.length > 0) {
+        // Debug: Log dates being added to week
+        if (weekStart.getMonth() === 11 && weekStart.getDate() === 15) { // December 15 week
+          console.log(`[WEEK BUILD DEBUG] Week starting ${weekStart.toLocaleDateString()}`);
+          console.log(`  Date range filter: start=${start.toLocaleDateString()}, end=${end.toLocaleDateString()}`);
+          console.log(`  Dates in week: ${datesInWeek.map(d => d.toLocaleDateString()).join(', ')}`);
+        }
+
         weeks.push({
           start: weekStart,
           end: weekEnd,

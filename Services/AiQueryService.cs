@@ -63,7 +63,7 @@ Database Tables:
 - TeamMembers (TeamMemberId, SquadId, MemberName, Role, DailyCapacityHours, IsActive)
 - Projects (ProjectId, ProjectNumber, CustomerName, CustomerCity, CustomerState, EstimatedDevHours, GoLiveDate, StartDate)
 - ProjectAllocations (AllocationId, ProjectId, SquadId, AllocationDate, AllocatedHours, AllocationType)
-- OnsiteSchedules (OnsiteScheduleId, ProjectId, WeekStartDate, EngineerCount, OnsiteType)
+- OnsiteSchedules (OnsiteScheduleId, ProjectId, WeekStartDate, EngineerCount, TotalHours, OnsiteType)
 ";
     }
 
@@ -178,7 +178,7 @@ Question: Which projects have onsite work scheduled in the next 2 months?
 SQL: SELECT p.ProjectNumber, p.CustomerName, os.OnsiteType, os.WeekStartDate, os.EngineerCount FROM Projects p JOIN OnsiteSchedules os ON p.ProjectId = os.ProjectId WHERE os.WeekStartDate BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(MONTH, 2, CAST(GETDATE() AS DATE)) ORDER BY os.WeekStartDate
 
 Question: Which squads have onsite work in the next 4 months and how many hours?
-SQL: SELECT s.SquadName, os.OnsiteType, os.WeekStartDate, SUM(pa.AllocatedHours) as OnsiteHours FROM OnsiteSchedules os JOIN Projects p ON os.ProjectId = p.ProjectId JOIN ProjectAllocations pa ON p.ProjectId = pa.ProjectId AND pa.AllocationDate >= os.WeekStartDate AND pa.AllocationDate < DATEADD(WEEK, 1, os.WeekStartDate) JOIN Squads s ON pa.SquadId = s.SquadId WHERE os.WeekStartDate BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(MONTH, 4, CAST(GETDATE() AS DATE)) AND s.IsActive = 1 GROUP BY s.SquadName, os.OnsiteType, os.WeekStartDate ORDER BY s.SquadName, os.WeekStartDate
+SQL: SELECT s.SquadName, os.OnsiteType, os.WeekStartDate, os.TotalHours FROM OnsiteSchedules os JOIN Projects p ON os.ProjectId = p.ProjectId JOIN ProjectAllocations pa ON p.ProjectId = pa.ProjectId AND pa.AllocationDate >= os.WeekStartDate AND pa.AllocationDate < DATEADD(WEEK, 1, os.WeekStartDate) JOIN Squads s ON pa.SquadId = s.SquadId WHERE os.WeekStartDate BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(MONTH, 4, CAST(GETDATE() AS DATE)) AND s.IsActive = 1 GROUP BY s.SquadName, os.OnsiteType, os.WeekStartDate, os.TotalHours ORDER BY s.SquadName, os.WeekStartDate
 
 IMPORTANT: ONSITE VS ALLOCATIONS
 - ""onsite work"" or ""onsite schedule"" = Use OnsiteSchedules table (tracks UAT/Go-Live events)

@@ -92,7 +92,6 @@ namespace ProjectScheduler.Services
             Console.WriteLine($"[SCHEDULE SUGGESTION] Using {algorithmName} algorithm, starting from {searchDate:yyyy-MM-dd}, Go-Live date {(hasGoLiveDate ? "exists: " + project.GoLiveDate!.Value.ToString("yyyy-MM-dd") : "not set")}");
 
             AllocationSchedule? schedule = null;
-            DateTime? estimatedEndDate = null;
             DateTime actualGoLiveDate;
             DateTime actualUatDate;
             DateTime actualCrpDate;
@@ -143,14 +142,23 @@ namespace ProjectScheduler.Services
                     // Try flexible/greedy allocation
                     schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
                 }
+                else if (useDelayed)
+                {
+                    // For Delayed without Go-Live, calculate estimated UAT date first
+                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
+                    var estimatedUat = AddWorkingDays(searchDate, estimatedDays);
+                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedUat, bufferedHours, dailyCapacity);
+                }
                 else
                 {
-                    // Try strict allocation
-                    estimatedEndDate = await TryFindAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
+                    // Try strict (even) allocation - estimate end date first
+                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
+                    var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
+                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity, estimatedEnd);
                 }
 
-                // Check if we found a schedule (either greedy or strict)
-                if (schedule == null && estimatedEndDate == null)
+                // Check if we found a schedule
+                if (schedule == null)
                 {
                     return new ScheduleSuggestion
                     {
@@ -161,34 +169,20 @@ namespace ProjectScheduler.Services
                         BufferPercentage = buffer,
                         BufferedDevHours = bufferedHours,
                         CanAllocate = false,
-                        Message = "No available capacity found within the next year"
+                        Message = "Cannot allocate - would exceed 120% capacity limit"
                     };
                 }
 
                 // Calculate dates based on the found schedule
-                DateTime actualStartDate;
-                DateTime actualEndDate;
-
-                if (useGreedy && schedule != null)
-                {
-                    actualStartDate = schedule.StartDate;
-                    actualEndDate = schedule.EndDate;
-                }
-                else
-                {
-                    actualStartDate = searchDate;
-                    actualEndDate = estimatedEndDate!.Value;
-                }
-
-                var devCompleteDate = actualEndDate;
+                var devCompleteDate = schedule.EndDate;
                 actualCrpDate = AddWorkingDays(devCompleteDate, -3);
                 actualUatDate = devCompleteDate;
                 actualGoLiveDate = AddWorkingDays(actualUatDate, 10);
             }
 
             // Determine the dates from schedule
-            DateTime finalStartDate = schedule?.StartDate ?? searchDate;
-            DateTime finalEndDate = schedule?.EndDate ?? estimatedEndDate ?? actualUatDate;
+            DateTime finalStartDate = schedule!.StartDate;
+            DateTime finalEndDate = schedule.EndDate;
 
             // Calculate working days duration
             var durationDays = GetWorkingDays(finalStartDate, finalEndDate);

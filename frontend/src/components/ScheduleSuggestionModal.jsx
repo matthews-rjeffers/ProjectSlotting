@@ -28,7 +28,7 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [squads, setSquads] = useState([]);
   const [selectedSquadId, setSelectedSquadId] = useState('');
   const [bufferPercentage, setBufferPercentage] = useState(project.bufferPercentage || 20);
-  const [algorithmType, setAlgorithmType] = useState('greedy'); // 'greedy' or 'strict'
+  const [algorithmType, setAlgorithmType] = useState('strict'); // 'greedy', 'strict', or 'delayed'
   const [startDate, setStartDate] = useState(getNextMonday());
   const [suggestion, setSuggestion] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -153,7 +153,8 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                 disabled={loading || applying}
               >
                 <option value="greedy">Greedy Algorithm (Flexible - uses partial capacity)</option>
-                <option value="strict">Strict Algorithm (Requires full daily capacity)</option>
+                <option value="strict">Strict Algorithm (Even distribution)</option>
+                <option value="delayed">Delayed Algorithm (Reverse greedy - latest start)</option>
               </select>
             </div>
 

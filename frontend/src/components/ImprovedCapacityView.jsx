@@ -178,7 +178,7 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
         goLivePercent: goLivePercent.toFixed(1),
         remaining: (totalCapacity - totalAllocated).toFixed(1),
         utilizationPercent: utilizationPercent.toFixed(1),
-        status: utilizationPercent > 100 ? 'overloaded' : utilizationPercent > 80 ? 'high' : 'normal',
+        status: utilizationPercent > 120 ? 'overloaded' : utilizationPercent > 100 ? 'overallocated' : utilizationPercent > 80 ? 'high' : 'normal',
         projectCount: projectsThisWeek.size,
         projects: Array.from(projectsThisWeek).map(id => projects.find(p => p.projectId === id)).filter(Boolean)
       };

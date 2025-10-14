@@ -252,6 +252,7 @@ namespace ProjectScheduler.Services
                     ProjectId = projectId,
                     WeekStartDate = uatWeekStart,
                     EngineerCount = 1,
+                    TotalHours = 40,
                     OnsiteType = "UAT",
                     CreatedDate = DateTime.UtcNow
                 };
@@ -264,6 +265,7 @@ namespace ProjectScheduler.Services
                     ProjectId = projectId,
                     WeekStartDate = goLiveWeekStart,
                     EngineerCount = 1,
+                    TotalHours = 40,
                     OnsiteType = "GoLive",
                     CreatedDate = DateTime.UtcNow
                 };

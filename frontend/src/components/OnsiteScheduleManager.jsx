@@ -8,6 +8,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
   const [newSchedule, setNewSchedule] = useState({
     weekStartDate: '',
     engineerCount: 1,
+    totalHours: 40,
     onsiteType: 'UAT'
   });
 
@@ -37,10 +38,11 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
         projectId,
         weekStartDate: newSchedule.weekStartDate,
         engineerCount: parseInt(newSchedule.engineerCount),
+        totalHours: parseInt(newSchedule.totalHours),
         onsiteType: newSchedule.onsiteType
       });
 
-      setNewSchedule({ weekStartDate: '', engineerCount: 1, onsiteType: 'UAT' });
+      setNewSchedule({ weekStartDate: '', engineerCount: 1, totalHours: 40, onsiteType: 'UAT' });
       loadSchedules();
     } catch (error) {
       console.error('Error creating schedule:', error);
@@ -56,6 +58,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
         projectId: schedule.projectId,
         weekStartDate: schedule.weekStartDate,
         engineerCount: schedule.engineerCount,
+        totalHours: schedule.totalHours,
         onsiteType: schedule.onsiteType
       };
       console.log('Updating schedule with payload:', updatePayload);
@@ -108,7 +111,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
     <div className="onsite-schedule-manager">
       <h4>Onsite Schedule</h4>
       <p className="schedule-description">
-        Schedule specific weeks for onsite work. Each entry allocates 40 hours per engineer per week.
+        Schedule specific weeks for onsite work. Specify the number of engineers and total hours for each week.
       </p>
 
       <div className="schedule-list">
@@ -164,7 +167,18 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                           <option value="GoLive">Go Live</option>
                         </select>
                       </td>
-                      <td>{editingSchedule.engineerCount * 40}h</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          max="200"
+                          value={editingSchedule.totalHours}
+                          onChange={(e) => setEditingSchedule({
+                            ...editingSchedule,
+                            totalHours: parseInt(e.target.value)
+                          })}
+                        />
+                      </td>
                       <td>
                         <button type="button" className="btn-save" onClick={() => handleUpdateSchedule(editingSchedule)}>
                           Save
@@ -183,7 +197,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                           {schedule.onsiteType}
                         </span>
                       </td>
-                      <td className="total-hours">{schedule.engineerCount * 40}h</td>
+                      <td className="total-hours">{schedule.totalHours}h</td>
                       <td>
                         <button type="button" className="btn-edit-small" onClick={() => setEditingSchedule(schedule)}>
                           Edit
@@ -237,7 +251,13 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
           </div>
           <div className="form-field">
             <label>Total Hours</label>
-            <div className="hours-display">{newSchedule.engineerCount * 40}h</div>
+            <input
+              type="number"
+              min="1"
+              max="200"
+              value={newSchedule.totalHours}
+              onChange={(e) => setNewSchedule({ ...newSchedule, totalHours: e.target.value })}
+            />
           </div>
           <button type="button" className="btn-add" onClick={handleAddSchedule}>
             Add Week

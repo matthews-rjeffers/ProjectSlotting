@@ -36,6 +36,7 @@ namespace ProjectScheduler.Controllers
                 ProjectId = dto.ProjectId,
                 WeekStartDate = dto.WeekStartDate,
                 EngineerCount = dto.EngineerCount,
+                TotalHours = dto.TotalHours,
                 OnsiteType = dto.OnsiteType,
                 CreatedDate = DateTime.UtcNow
             };
@@ -65,6 +66,7 @@ namespace ProjectScheduler.Controllers
             schedule.ProjectId = dto.ProjectId;
             schedule.WeekStartDate = dto.WeekStartDate;
             schedule.EngineerCount = dto.EngineerCount;
+            schedule.TotalHours = dto.TotalHours;
             schedule.OnsiteType = dto.OnsiteType;
             schedule.UpdatedDate = DateTime.UtcNow;
 
@@ -122,6 +124,10 @@ namespace ProjectScheduler.Controllers
         public int EngineerCount { get; set; }
 
         [Required]
+        [Range(1, 200)]
+        public int TotalHours { get; set; } = 40;
+
+        [Required]
         [MaxLength(20)]
         public string OnsiteType { get; set; } = "UAT";
     }
@@ -140,6 +146,10 @@ namespace ProjectScheduler.Controllers
         [Required]
         [Range(1, 20)]
         public int EngineerCount { get; set; }
+
+        [Required]
+        [Range(1, 200)]
+        public int TotalHours { get; set; } = 40;
 
         [Required]
         [MaxLength(20)]

@@ -196,8 +196,12 @@
   border-left: 4px solid #f39c12;
 }
 
-.week-card.overloaded {
+.week-card.overallocated {
   border-left: 4px solid #e74c3c;
+}
+
+.week-card.overloaded {
+  border-left: 4px solid #8b0000;
 }
 
 .week-header {
@@ -230,9 +234,14 @@
   color: #856404;
 }
 
-.utilization-badge.overloaded {
+.utilization-badge.overallocated {
   background: #f8d7da;
   color: #721c24;
+}
+
+.utilization-badge.overloaded {
+  background: #8b0000;
+  color: #ffffff;
 }
 
 .capacity-progress {

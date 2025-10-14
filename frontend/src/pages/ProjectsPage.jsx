@@ -172,7 +172,7 @@ const ProjectsPage = () => {
                 <td className="project-name">{getProjectDisplayName(project)}</td>
                 <td>{formatDate(project.startDate)}</td>
                 <td className="crp-date">{formatDate(project.crpdate)}</td>
-                <td>{formatDate(project.goLiveDate)}</td>
+                <td className="golive-date">{formatDate(project.goLiveDate)}</td>
                 <td className="hours dev-hours">{project.estimatedDevHours}h</td>
                 <td className="hours onsite-hours">{project.estimatedOnsiteHours}h</td>
                 <td className="squad-cell">

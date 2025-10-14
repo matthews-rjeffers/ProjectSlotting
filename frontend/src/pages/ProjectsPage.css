@@ -91,6 +91,11 @@
   color: #3498db;
 }
 
+.golive-date {
+  font-weight: 500;
+  color: #9b59b6;
+}
+
 .hours {
   font-family: 'Courier New', monospace;
   font-weight: 600;

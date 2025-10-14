@@ -45,6 +45,14 @@ export const getScheduleSuggestion = (projectId, squadId, bufferPercentage, algo
   });
 export const applyScheduleSuggestion = (projectId, squadId, bufferPercentage, algorithmType, startDate) =>
   api.post(`/projects/${projectId}/apply-schedule-suggestion`, { squadId, bufferPercentage, algorithmType, startDate });
+export const getSquadRecommendations = (projectId, bufferPercentage, algorithmType, startDate) =>
+  api.get(`/projects/${projectId}/squad-recommendations`, {
+    params: {
+      ...(bufferPercentage && { bufferPercentage }),
+      ...(algorithmType && { algorithmType }),
+      ...(startDate && { startDate })
+    }
+  });
 
 // Team Members API
 export const getTeamMembers = (squadId) =>

@@ -13,15 +13,18 @@ namespace ProjectScheduler.Controllers
         private readonly ProjectSchedulerDbContext _context;
         private readonly IAllocationService _allocationService;
         private readonly IScheduleSuggestionService _scheduleSuggestionService;
+        private readonly ISquadRecommendationService _squadRecommendationService;
 
         public ProjectsController(
             ProjectSchedulerDbContext context,
             IAllocationService allocationService,
-            IScheduleSuggestionService scheduleSuggestionService)
+            IScheduleSuggestionService scheduleSuggestionService,
+            ISquadRecommendationService squadRecommendationService)
         {
             _context = context;
             _allocationService = allocationService;
             _scheduleSuggestionService = scheduleSuggestionService;
+            _squadRecommendationService = squadRecommendationService;
         }
 
         // GET: api/Projects
@@ -246,6 +249,22 @@ namespace ProjectScheduler.Controllers
             }
 
             return Ok(new { message = "Schedule applied successfully", suggestion });
+        }
+
+        // GET: api/Projects/5/squad-recommendations
+        [HttpGet("{projectId}/squad-recommendations")]
+        public async Task<ActionResult<List<SquadRecommendation>>> GetSquadRecommendations(
+            int projectId,
+            [FromQuery] decimal? bufferPercentage = null,
+            [FromQuery] string? algorithmType = null,
+            [FromQuery] DateTime? startDate = null)
+        {
+            var recommendations = await _squadRecommendationService.GetSquadRecommendations(
+                projectId,
+                bufferPercentage,
+                algorithmType,
+                startDate);
+            return Ok(recommendations);
         }
 
         private bool ProjectExists(int id)

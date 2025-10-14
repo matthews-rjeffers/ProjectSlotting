@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getScheduleSuggestion, applyScheduleSuggestion, getSquads } from '../api';
+import { getSquadRecommendations, applyScheduleSuggestion } from '../api';
 import './ScheduleSuggestionModal.css';
 
 // Helper function to get next Monday
@@ -25,62 +25,53 @@ const getNextMonday = () => {
 };
 
 const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
-  const [squads, setSquads] = useState([]);
-  const [selectedSquadId, setSelectedSquadId] = useState('');
+  const [recommendations, setRecommendations] = useState([]);
+  const [selectedRecommendation, setSelectedRecommendation] = useState(null);
   const [bufferPercentage, setBufferPercentage] = useState(project.bufferPercentage || 20);
   const [algorithmType, setAlgorithmType] = useState('strict'); // 'greedy', 'strict', or 'delayed'
   const [startDate, setStartDate] = useState(getNextMonday());
-  const [suggestion, setSuggestion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadSquads();
+    loadRecommendations();
   }, []);
 
-  const loadSquads = async () => {
-    try {
-      const response = await getSquads();
-      setSquads(response.data);
-      if (response.data.length > 0) {
-        setSelectedSquadId(response.data[0].squadId);
-      }
-    } catch (error) {
-      console.error('Error loading squads:', error);
-      setError('Failed to load squads');
+  // Reload recommendations when parameters change
+  useEffect(() => {
+    if (recommendations.length > 0) {
+      loadRecommendations();
     }
-  };
+  }, [bufferPercentage, algorithmType, startDate]);
 
-  const handleGetSuggestion = async () => {
-    if (!selectedSquadId) {
-      setError('Please select a squad');
-      return;
-    }
-
+  const loadRecommendations = async () => {
     setLoading(true);
     setError('');
-
     try {
-      const response = await getScheduleSuggestion(
+      const response = await getSquadRecommendations(
         project.projectId,
-        selectedSquadId,
         bufferPercentage,
         algorithmType,
         startDate
       );
-      setSuggestion(response.data);
+      setRecommendations(response.data);
+      // Auto-select top recommendation if it can allocate
+      if (response.data.length > 0 && response.data[0].canAllocate) {
+        setSelectedRecommendation(response.data[0]);
+      } else if (response.data.length > 0) {
+        setSelectedRecommendation(response.data[0]);
+      }
     } catch (error) {
-      console.error('Error getting schedule suggestion:', error);
-      setError('Failed to get schedule suggestion');
-      setSuggestion(null);
+      console.error('Error loading squad recommendations:', error);
+      setError('Failed to load squad recommendations');
     } finally {
       setLoading(false);
     }
   };
 
   const handleApplySuggestion = async () => {
-    if (!suggestion || !suggestion.canAllocate) return;
+    if (!selectedRecommendation || !selectedRecommendation.canAllocate) return;
 
     setApplying(true);
     setError('');
@@ -88,7 +79,7 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
     try {
       await applyScheduleSuggestion(
         project.projectId,
-        selectedSquadId,
+        selectedRecommendation.squadId,
         bufferPercentage,
         algorithmType,
         startDate
@@ -128,22 +119,6 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
           </div>
 
           <div className="suggestion-controls">
-            <div className="control-group">
-              <label htmlFor="squad-select">Select Squad</label>
-              <select
-                id="squad-select"
-                value={selectedSquadId}
-                onChange={(e) => setSelectedSquadId(e.target.value)}
-                disabled={loading || applying}
-              >
-                {squads.map(squad => (
-                  <option key={squad.squadId} value={squad.squadId}>
-                    {squad.squadName} - {squad.squadLeadName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="control-group">
               <label htmlFor="algorithm-select">Algorithm Type</label>
               <select
@@ -200,49 +175,89 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                 <strong>{(project.estimatedDevHours * (1 + bufferPercentage / 100)).toFixed(1)}h</strong>
               </div>
             </div>
-
-            <button
-              className="btn btn-primary"
-              onClick={handleGetSuggestion}
-              disabled={loading || applying || !selectedSquadId}
-            >
-              {loading ? 'Calculating...' : 'Get Schedule Suggestion'}
-            </button>
           </div>
+
+          {loading && (
+            <div className="loading-message">Loading squad recommendations...</div>
+          )}
+
+          {!loading && recommendations.length > 0 && (
+            <div className="squad-recommendations">
+              <h4>Recommended Squads</h4>
+              {recommendations.map((rec, index) => (
+                <div
+                  key={rec.squadId}
+                  className={`squad-card ${selectedRecommendation?.squadId === rec.squadId ? 'selected' : ''} ${!rec.canAllocate ? 'unavailable' : ''}`}
+                  onClick={() => rec.canAllocate && setSelectedRecommendation(rec)}
+                  style={{ cursor: rec.canAllocate ? 'pointer' : 'not-allowed' }}
+                >
+                  <div className="squad-header">
+                    <div className="squad-name-section">
+                      <span className="squad-rank">#{index + 1}</span>
+                      <span className="squad-name">{rec.squadName}</span>
+                    </div>
+                    <span className="squad-score" title={`Overall Score: ${rec.overallScore.toFixed(1)}/100`}>
+                      {'★'.repeat(Math.round(rec.overallScore / 20))}{'☆'.repeat(5 - Math.round(rec.overallScore / 20))} {(rec.overallScore / 20).toFixed(1)}/5
+                    </span>
+                  </div>
+                  <div className="squad-reason">{rec.recommendationReason}</div>
+                  <div className="squad-scores">
+                    <span className="score-badge" title="How well the squad fits the project size">
+                      Capacity: {rec.capacityScore.toFixed(0)}
+                    </span>
+                    <span className="score-badge" title="Current workload level">
+                      Workload: {rec.workloadScore.toFixed(0)}
+                    </span>
+                    <span className="score-badge" title="Number of active projects">
+                      Projects: {rec.projectCountScore.toFixed(0)}
+                    </span>
+                    <span className="score-badge" title="Squad size match">
+                      Size: {rec.sizeScore.toFixed(0)}
+                    </span>
+                  </div>
+                  {!rec.canAllocate && rec.suggestion && (
+                    <div className="squad-error">
+                      Unable to allocate: {rec.suggestion.message}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {error && (
             <div className="error-message">{error}</div>
           )}
 
-          {suggestion && (
-            <div className={`suggestion-result ${suggestion.canAllocate ? 'can-allocate' : 'cannot-allocate'}`}>
-              {suggestion.canAllocate ? (
+          {selectedRecommendation && selectedRecommendation.suggestion && (
+            <div className={`suggestion-result ${selectedRecommendation.canAllocate ? 'can-allocate' : 'cannot-allocate'}`}>
+              {selectedRecommendation.canAllocate ? (
                 <>
-                  <h4>Suggested Schedule</h4>
+                  <h4>Suggested Schedule for {selectedRecommendation.squadName}</h4>
                   <div className="schedule-details">
                     <div className="schedule-row">
                       <span className="schedule-label">Start Date:</span>
-                      <span className="schedule-value">{formatDate(suggestion.suggestedStartDate)}</span>
+                      <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.suggestedStartDate)}</span>
                     </div>
                     <div className="schedule-row">
                       <span className="schedule-label">Code Complete (CRP):</span>
-                      <span className="schedule-value">{formatDate(suggestion.estimatedCrpDate)}</span>
+                      <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.estimatedCrpDate)}</span>
                     </div>
                     <div className="schedule-row">
                       <span className="schedule-label">UAT Date:</span>
-                      <span className="schedule-value">{formatDate(suggestion.estimatedUatDate)}</span>
+                      <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.estimatedUatDate)}</span>
                     </div>
                     <div className="schedule-row">
                       <span className="schedule-label">Go-Live Date:</span>
-                      <span className="schedule-value">{formatDate(suggestion.estimatedGoLiveDate)}</span>
+                      <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.estimatedGoLiveDate)}</span>
                     </div>
                     <div className="schedule-row">
                       <span className="schedule-label">Duration:</span>
-                      <span className="schedule-value">{suggestion.estimatedDurationDays} working days</span>
+                      <span className="schedule-value">{selectedRecommendation.suggestion.estimatedDurationDays} working days</span>
                     </div>
                     <div className="schedule-row">
                       <span className="schedule-label">Buffered Hours:</span>
-                      <span className="schedule-value">{suggestion.bufferedDevHours.toFixed(1)}h</span>
+                      <span className="schedule-value">{selectedRecommendation.suggestion.bufferedDevHours.toFixed(1)}h</span>
                     </div>
                   </div>
 
@@ -257,7 +272,7 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
               ) : (
                 <div className="cannot-allocate-message">
                   <h4>Cannot Schedule</h4>
-                  <p>{suggestion.message}</p>
+                  <p>{selectedRecommendation.suggestion.message}</p>
                 </div>
               )}
             </div>
@@ -272,13 +287,13 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
           >
             Cancel
           </button>
-          {suggestion && suggestion.canAllocate && (
+          {selectedRecommendation && selectedRecommendation.canAllocate && (
             <button
               className="btn btn-success"
               onClick={handleApplySuggestion}
               disabled={applying}
             >
-              {applying ? 'Applying...' : 'Apply Schedule'}
+              {applying ? 'Applying...' : `Apply Schedule to ${selectedRecommendation.squadName}`}
             </button>
           )}
         </div>

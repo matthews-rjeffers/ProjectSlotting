@@ -202,3 +202,124 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Squad Recommendations Styles */
+.loading-message {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.squad-recommendations {
+  margin: 20px 0;
+}
+
+.squad-recommendations h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.squad-card {
+  background: white;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.squad-card:hover:not(.unavailable) {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.squad-card.selected {
+  border-color: #28a745;
+  background: #f0f9f4;
+  box-shadow: 0 3px 10px rgba(40, 167, 69, 0.2);
+}
+
+.squad-card.unavailable {
+  opacity: 0.6;
+  background: #f8f9fa;
+  border-color: #dc3545;
+}
+
+.squad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.squad-name-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.squad-rank {
+  background: #007bff;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.squad-card.selected .squad-rank {
+  background: #28a745;
+}
+
+.squad-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: #212529;
+}
+
+.squad-score {
+  color: #ffc107;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.squad-reason {
+  color: #6c757d;
+  font-size: 14px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.squad-scores {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.score-badge {
+  background: #e9ecef;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.squad-card.selected .score-badge {
+  background: #d4edda;
+  color: #155724;
+}
+
+.squad-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  color: #721c24;
+  font-size: 13px;
+}

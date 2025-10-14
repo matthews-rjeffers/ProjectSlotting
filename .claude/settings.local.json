@@ -4,9 +4,20 @@
       "Bash(start visualization.html)",
       "Bash(dotnet run:*)",
       "Bash(powershell:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(git checkout:*)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "filesystem",
+    "puppeteer",
+    "memory",
+    "fetch",
+    "github",
+    "git"
+  ]
 }

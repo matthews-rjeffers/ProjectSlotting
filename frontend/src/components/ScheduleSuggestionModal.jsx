@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSquadRecommendations, applyScheduleSuggestion, getAlgorithmComparison } from '../api';
+import { getSquadRecommendations, applyScheduleSuggestion, getAlgorithmComparison, checkConflicts } from '../api';
+import ConflictWarningModal from './ConflictWarningModal';
 import './ScheduleSuggestionModal.css';
 
 // Helper function to get next Monday
@@ -36,6 +37,8 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
+  const [conflicts, setConflicts] = useState(null);
+  const [showConflictModal, setShowConflictModal] = useState(false);
 
   useEffect(() => {
     // Load squad recommendations on mount
@@ -108,6 +111,37 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const handleApplySuggestion = async () => {
     if (!selectedRecommendation || !selectedRecommendation.canAllocate) return;
 
+    // Check for conflicts first
+    setApplying(true);
+    setError('');
+
+    try {
+      const conflictResult = await checkConflicts(project.projectId, {
+        squadId: selectedRecommendation.squadId,
+        checkScheduleSuggestion: true,
+        suggestion: selectedRecommendation.suggestion
+      });
+
+      if (conflictResult.data.hasConflicts && conflictResult.data.requiresConfirmation) {
+        // Show conflict modal and wait for user confirmation
+        setConflicts(conflictResult.data.conflicts);
+        setShowConflictModal(true);
+        setApplying(false);
+        return;
+      }
+
+      // No conflicts or conflicts don't require confirmation, proceed
+      await applyScheduleSuggestionActual();
+    } catch (error) {
+      console.error('Error checking conflicts or applying schedule:', error);
+      setError('Failed to check conflicts or apply schedule');
+      setApplying(false);
+    }
+  };
+
+  const applyScheduleSuggestionActual = async () => {
+    if (!selectedRecommendation || !selectedRecommendation.canAllocate) return;
+
     setApplying(true);
     setError('');
 
@@ -127,6 +161,16 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
     } finally {
       setApplying(false);
     }
+  };
+
+  const handleConflictConfirm = async () => {
+    setShowConflictModal(false);
+    await applyScheduleSuggestionActual();
+  };
+
+  const handleConflictCancel = () => {
+    setShowConflictModal(false);
+    setConflicts(null);
   };
 
   const formatDate = (dateString) => {
@@ -432,6 +476,14 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
           )}
         </div>
       </div>
+
+      {showConflictModal && conflicts && (
+        <ConflictWarningModal
+          conflicts={conflicts}
+          onConfirm={handleConflictConfirm}
+          onCancel={handleConflictCancel}
+        />
+      )}
     </div>
   );
 };

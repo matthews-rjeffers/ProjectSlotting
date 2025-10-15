@@ -16,6 +16,8 @@ public partial class ProjectSchedulerDbContext : DbContext
     {
     }
 
+    public virtual DbSet<OnsiteSchedule> OnsiteSchedules { get; set; }
+
     public virtual DbSet<Project> Projects { get; set; }
 
     public virtual DbSet<ProjectAllocation> ProjectAllocations { get; set; }
@@ -24,32 +26,37 @@ public partial class ProjectSchedulerDbContext : DbContext
 
     public virtual DbSet<TeamMember> TeamMembers { get; set; }
 
-    public virtual DbSet<OnsiteSchedule> OnsiteSchedules { get; set; }
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // Configuration is handled by DI in Program.cs
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=ProjectSchedulerDb;Integrated Security=True;");
-        }
-    }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=ProjectSchedulerDb;Trusted_Connection=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<OnsiteSchedule>(entity =>
+        {
+            entity.HasIndex(e => e.ProjectId, "IX_OnsiteSchedules_ProjectId");
+
+            entity.Property(e => e.OnsiteType).HasMaxLength(20);
+            entity.Property(e => e.TotalHours).HasDefaultValue(40);
+
+            entity.HasOne(d => d.Project).WithMany(p => p.OnsiteSchedules).HasForeignKey(d => d.ProjectId);
+        });
+
         modelBuilder.Entity<Project>(entity =>
         {
             entity.HasIndex(e => e.Crpdate, "IX_Projects_CRPDate");
 
             entity.HasIndex(e => e.ProjectNumber, "IX_Projects_ProjectNumber").IsUnique();
 
+            entity.Property(e => e.BufferPercentage)
+                .HasDefaultValue(20m)
+                .HasColumnType("decimal(5, 2)");
             entity.Property(e => e.Crpdate).HasColumnName("CRPDate");
             entity.Property(e => e.CustomerCity).HasMaxLength(100);
             entity.Property(e => e.CustomerName).HasMaxLength(200);
             entity.Property(e => e.CustomerState).HasMaxLength(2);
             entity.Property(e => e.EstimatedDevHours).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.EstimatedOnsiteHours).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.BufferPercentage).HasColumnType("decimal(5, 2)").HasDefaultValue(20);
             entity.Property(e => e.JiraLink).HasMaxLength(500);
             entity.Property(e => e.ProjectNumber).HasMaxLength(50);
             entity.Property(e => e.Uatdate).HasColumnName("UATDate");
@@ -59,7 +66,7 @@ public partial class ProjectSchedulerDbContext : DbContext
         {
             entity.HasKey(e => e.AllocationId);
 
-            entity.HasIndex(e => new { e.ProjectId, e.SquadId, e.AllocationDate }, "IX_ProjectAllocations_ProjectId_SquadId_AllocationDate").IsUnique();
+            entity.HasIndex(e => new { e.ProjectId, e.SquadId, e.AllocationDate, e.AllocationType }, "IX_ProjectAllocations_ProjectId_SquadId_AllocationDate_Type").IsUnique();
 
             entity.HasIndex(e => new { e.SquadId, e.AllocationDate }, "IX_ProjectAllocations_SquadId_AllocationDate");
 

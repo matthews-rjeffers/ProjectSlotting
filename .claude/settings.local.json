@@ -6,7 +6,8 @@
       "Bash(powershell:*)",
       "Bash(taskkill:*)",
       "Bash(git checkout:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []

@@ -1,36 +1,25 @@
-using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace ProjectScheduler.Models
+namespace ProjectScheduler.Models;
+
+public partial class OnsiteSchedule
 {
-    public class OnsiteSchedule
-    {
-        [Key]
-        public int OnsiteScheduleId { get; set; }
+    public int OnsiteScheduleId { get; set; }
 
-        public int ProjectId { get; set; }
+    public int ProjectId { get; set; }
 
-        [Required]
-        public DateTime WeekStartDate { get; set; }
+    public DateTime WeekStartDate { get; set; }
 
-        [Required]
-        [Range(1, 20)]
-        public int EngineerCount { get; set; }
+    public int EngineerCount { get; set; }
 
-        [Required]
-        [Range(1, 200)]
-        public int TotalHours { get; set; } = 40; // Total hours for the onsite week
+    public string OnsiteType { get; set; } = null!;
 
-        [Required]
-        [MaxLength(20)]
-        public string OnsiteType { get; set; } = "UAT"; // "UAT" or "GoLive"
+    public DateTime CreatedDate { get; set; }
 
-        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedDate { get; set; }
 
-        public DateTime? UpdatedDate { get; set; }
+    public int TotalHours { get; set; }
 
-        [ForeignKey("ProjectId")]
-        public virtual Project? Project { get; set; }
-    }
+    public virtual Project Project { get; set; } = null!;
 }

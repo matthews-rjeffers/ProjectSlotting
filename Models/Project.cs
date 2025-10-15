@@ -25,8 +25,6 @@ public partial class Project
 
     public DateTime? Uatdate { get; set; }
 
-    public decimal BufferPercentage { get; set; } = 20;
-
     public string JiraLink { get; set; } = null!;
 
     public DateTime? StartDate { get; set; }
@@ -35,7 +33,9 @@ public partial class Project
 
     public DateTime? UpdatedDate { get; set; }
 
-    public virtual ICollection<ProjectAllocation> ProjectAllocations { get; set; } = new List<ProjectAllocation>();
+    public decimal BufferPercentage { get; set; }
 
     public virtual ICollection<OnsiteSchedule> OnsiteSchedules { get; set; } = new List<OnsiteSchedule>();
+
+    public virtual ICollection<ProjectAllocation> ProjectAllocations { get; set; } = new List<ProjectAllocation>();
 }

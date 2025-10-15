@@ -142,11 +142,18 @@
 .project-dates {
   color: #888;
   font-size: 0.8rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.unallocated-card .btn {
-  width: 100%;
+.project-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.project-actions .btn {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
 }
 
 /* Weekly Capacity View */

@@ -3,7 +3,7 @@ import { getSquadCapacity, allocateProject, reallocateProject, unassignProject, 
 import ScheduleSuggestionModal from './ScheduleSuggestionModal';
 import './ImprovedCapacityView.css';
 
-function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUpdate }) {
+function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUpdate, onEditProject }) {
   const [capacityData, setCapacityData] = useState({});
   const [projectAllocations, setProjectAllocations] = useState({});
   const [weeklyData, setWeeklyData] = useState([]);
@@ -341,24 +341,40 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
                       <div className="project-dates">
                         CRP: {new Date(project.crpdate).toLocaleDateString()}
                       </div>
-                      <button
-                        onClick={() => handleAllocateProject(project)}
-                        className="btn btn-small btn-primary"
-                      >
-                        Allocate to {squad?.squadName}
-                      </button>
+                      <div className="project-actions">
+                        <button
+                          onClick={() => onEditProject && onEditProject(project)}
+                          className="btn btn-small btn-secondary"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleAllocateProject(project)}
+                          className="btn btn-small btn-primary"
+                        >
+                          Allocate to {squad?.squadName}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <>
                       <div className="project-dates">
                         <em>No dates set</em>
                       </div>
-                      <button
-                        onClick={() => setScheduleSuggestionProject(project)}
-                        className="btn btn-small btn-success"
-                      >
-                        Suggest Schedule
-                      </button>
+                      <div className="project-actions">
+                        <button
+                          onClick={() => onEditProject && onEditProject(project)}
+                          className="btn btn-small btn-secondary"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setScheduleSuggestionProject(project)}
+                          className="btn btn-small btn-success"
+                        >
+                          Suggest Schedule
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>

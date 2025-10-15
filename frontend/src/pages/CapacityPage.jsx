@@ -136,6 +136,7 @@ function CapacityPage() {
               projects={projects}
               dateRange={dateRange}
               onProjectUpdate={loadProjects}
+              onEditProject={handleEditProject}
             />
           )}
         </main>

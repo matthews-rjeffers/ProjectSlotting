@@ -60,6 +60,8 @@ export const getAlgorithmComparison = (projectId, squadId, bufferPercentage, sta
       ...(startDate && { startDate })
     }
   });
+export const checkConflicts = (projectId, data) =>
+  api.post(`/projects/${projectId}/check-conflicts`, data);
 
 // Team Members API
 export const getTeamMembers = (squadId) =>

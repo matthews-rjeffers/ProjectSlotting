@@ -37,6 +37,7 @@ builder.Services.AddScoped<IAllocationService, AllocationService>();
 builder.Services.AddScoped<IScheduleSuggestionService, ScheduleSuggestionService>();
 builder.Services.AddScoped<ISquadRecommendationService, SquadRecommendationService>();
 builder.Services.AddScoped<IAiQueryService, AiQueryService>();
+builder.Services.AddScoped<IConflictDetectionService, ConflictDetectionService>();
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>

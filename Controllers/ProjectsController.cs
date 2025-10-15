@@ -14,17 +14,20 @@ namespace ProjectScheduler.Controllers
         private readonly IAllocationService _allocationService;
         private readonly IScheduleSuggestionService _scheduleSuggestionService;
         private readonly ISquadRecommendationService _squadRecommendationService;
+        private readonly IConflictDetectionService _conflictDetectionService;
 
         public ProjectsController(
             ProjectSchedulerDbContext context,
             IAllocationService allocationService,
             IScheduleSuggestionService scheduleSuggestionService,
-            ISquadRecommendationService squadRecommendationService)
+            ISquadRecommendationService squadRecommendationService,
+            IConflictDetectionService conflictDetectionService)
         {
             _context = context;
             _allocationService = allocationService;
             _scheduleSuggestionService = scheduleSuggestionService;
             _squadRecommendationService = squadRecommendationService;
+            _conflictDetectionService = conflictDetectionService;
         }
 
         // GET: api/Projects
@@ -283,10 +286,60 @@ namespace ProjectScheduler.Controllers
             return Ok(comparisons);
         }
 
+        // POST: api/Projects/5/check-conflicts
+        [HttpPost("{projectId}/check-conflicts")]
+        public async Task<ActionResult<ConflictCheckResult>> CheckConflicts(
+            int projectId,
+            [FromBody] ConflictCheckRequest request)
+        {
+            var project = await _context.Projects.FindAsync(projectId);
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            ConflictCheckResult result;
+
+            if (request.CheckScheduleSuggestion && request.Suggestion != null)
+            {
+                // Check conflicts for a schedule suggestion
+                result = await _conflictDetectionService.CheckScheduleSuggestionConflicts(
+                    projectId,
+                    request.SquadId,
+                    request.Suggestion);
+            }
+            else
+            {
+                // Check conflicts for a simple allocation
+                var startDate = request.StartDate ?? DateTime.Now;
+                var endDate = request.EndDate ?? (project.Crpdate.HasValue ? project.Crpdate.Value : startDate.AddDays(30));
+                var estimatedHours = request.EstimatedHours ?? project.EstimatedDevHours;
+
+                result = await _conflictDetectionService.CheckAllocationConflicts(
+                    projectId,
+                    request.SquadId,
+                    startDate,
+                    endDate,
+                    estimatedHours);
+            }
+
+            return Ok(result);
+        }
+
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.ProjectId == id);
         }
+    }
+
+    public class ConflictCheckRequest
+    {
+        public int SquadId { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public decimal? EstimatedHours { get; set; }
+        public bool CheckScheduleSuggestion { get; set; }
+        public ScheduleSuggestion? Suggestion { get; set; }
     }
 
     public class AllocationRequest

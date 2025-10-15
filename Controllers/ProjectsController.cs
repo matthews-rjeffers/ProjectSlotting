@@ -267,6 +267,22 @@ namespace ProjectScheduler.Controllers
             return Ok(recommendations);
         }
 
+        // GET: api/Projects/5/algorithm-comparison/3
+        [HttpGet("{projectId}/algorithm-comparison/{squadId}")]
+        public async Task<ActionResult<List<AlgorithmComparison>>> CompareAlgorithms(
+            int projectId,
+            int squadId,
+            [FromQuery] decimal? bufferPercentage = null,
+            [FromQuery] DateTime? startDate = null)
+        {
+            var comparisons = await _scheduleSuggestionService.CompareAlgorithms(
+                projectId,
+                squadId,
+                bufferPercentage,
+                startDate);
+            return Ok(comparisons);
+        }
+
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.ProjectId == id);

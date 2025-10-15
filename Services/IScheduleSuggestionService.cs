@@ -14,6 +14,11 @@ namespace ProjectScheduler.Services
             string? algorithmType = null,
             DateTime? startDate = null);
         Task<bool> ApplyScheduleSuggestion(int projectId, int squadId, ScheduleSuggestion suggestion);
+        Task<List<AlgorithmComparison>> CompareAlgorithms(
+            int projectId,
+            int squadId,
+            decimal? bufferPercentage = null,
+            DateTime? startDate = null);
     }
 
     // Helper class to track flexible allocation schedule

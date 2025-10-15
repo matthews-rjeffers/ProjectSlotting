@@ -614,5 +614,63 @@ namespace ProjectScheduler.Services
             if (dayOfWeek == 0) dayOfWeek = 7; // Sunday = 7
             return date.AddDays(1 - dayOfWeek);
         }
+
+        public async Task<List<AlgorithmComparison>> CompareAlgorithms(
+            int projectId,
+            int squadId,
+            decimal? bufferPercentage = null,
+            DateTime? startDate = null)
+        {
+            var algorithms = new[] { "greedy", "strict", "delayed" };
+            var comparisons = new List<AlgorithmComparison>();
+
+            foreach (var algo in algorithms)
+            {
+                var suggestion = await GetScheduleSuggestion(projectId, squadId, bufferPercentage, algo, startDate);
+
+                var comparison = new AlgorithmComparison
+                {
+                    AlgorithmType = algo,
+                    AlgorithmName = algo == "greedy" ? "Greedy" : algo == "strict" ? "Strict" : "Delayed",
+                    Description = algo == "greedy"
+                        ? "Uses all available capacity - starts earliest, may have variable daily hours"
+                        : algo == "strict"
+                            ? "Distributes hours evenly - consistent daily allocation, balanced workload"
+                            : "Starts as late as possible - minimizes schedule risk, maximizes flexibility",
+                    CanAllocate = suggestion.CanAllocate,
+                    Message = suggestion.Message,
+                    SuggestedStartDate = suggestion.CanAllocate ? suggestion.SuggestedStartDate : null,
+                    EstimatedCrpDate = suggestion.CanAllocate ? suggestion.EstimatedCrpDate : null,
+                    EstimatedUatDate = suggestion.CanAllocate ? suggestion.EstimatedUatDate : null,
+                    EstimatedGoLiveDate = suggestion.CanAllocate ? suggestion.EstimatedGoLiveDate : null,
+                    EstimatedDurationDays = suggestion.CanAllocate ? suggestion.EstimatedDurationDays : null,
+                    BufferedDevHours = suggestion.CanAllocate ? suggestion.BufferedDevHours : null
+                };
+
+                // Add pros and cons based on results
+                if (suggestion.CanAllocate)
+                {
+                    if (algo == "greedy")
+                    {
+                        comparison.Pros = "Earliest possible start date";
+                        comparison.Cons = "Variable daily hours may impact team consistency";
+                    }
+                    else if (algo == "strict")
+                    {
+                        comparison.Pros = "Even workload distribution, predictable daily allocation";
+                        comparison.Cons = "May not start as early as Greedy";
+                    }
+                    else // delayed
+                    {
+                        comparison.Pros = "Latest start = maximum schedule flexibility";
+                        comparison.Cons = "Less buffer time if issues arise";
+                    }
+                }
+
+                comparisons.Add(comparison);
+            }
+
+            return comparisons;
+        }
     }
 }

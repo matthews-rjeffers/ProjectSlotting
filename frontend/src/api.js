@@ -53,6 +53,13 @@ export const getSquadRecommendations = (projectId, bufferPercentage, algorithmTy
       ...(startDate && { startDate })
     }
   });
+export const getAlgorithmComparison = (projectId, squadId, bufferPercentage, startDate) =>
+  api.get(`/projects/${projectId}/algorithm-comparison/${squadId}`, {
+    params: {
+      ...(bufferPercentage && { bufferPercentage }),
+      ...(startDate && { startDate })
+    }
+  });
 
 // Team Members API
 export const getTeamMembers = (squadId) =>

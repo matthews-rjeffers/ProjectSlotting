@@ -27,11 +27,14 @@
 .gantt-timeline-header {
   display: flex;
   flex: 1;
-  overflow-x: auto;
+  overflow-x: auto; /* Enable horizontal scrolling - will sync with body */
+  overflow-y: hidden;
+  min-width: 0; /* Allow flex shrinking */
 }
 
 .timeline-column-header {
   min-width: 80px;
+  flex-shrink: 0; /* Prevent columns from shrinking */
   padding: 12px 8px;
   text-align: center;
   font-size: 12px;
@@ -42,17 +45,20 @@
 
 .gantt-body {
   max-height: calc(100vh - 300px);
-  overflow-y: auto;
+  overflow-x: auto; /* Enable horizontal scrolling - will sync with header */
+  overflow-y: auto; /* Enable vertical scrolling independently */
 }
 
 .gantt-squad-section {
   border-bottom: 2px solid #dee2e6;
+  min-width: fit-content; /* Ensure width expands for content */
 }
 
 .gantt-squad-header {
   display: flex;
   background: #e9ecef;
   border-bottom: 1px solid #dee2e6;
+  min-width: fit-content; /* Ensure width expands for content */
 }
 
 .gantt-squad-header .gantt-sidebar {
@@ -66,6 +72,7 @@
   display: flex;
   border-bottom: 1px solid #f1f3f5;
   transition: background-color 0.2s;
+  min-width: fit-content; /* Ensure width expands for content */
 }
 
 .gantt-project-row:hover {
@@ -98,11 +105,28 @@
   color: #6c757d;
 }
 
-.gantt-timeline {
-  position: relative;
+.gantt-timeline-container {
+  display: flex;
   flex: 1;
+  position: relative;
   min-height: 60px;
+  overflow: hidden; /* Prevent overlay from expanding container */
+}
+
+.timeline-column-body {
+  min-width: 80px;
+  flex-shrink: 0;
+  border-right: 1px solid #f1f3f5;
+}
+
+.gantt-timeline-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
+  pointer-events: all;
 }
 
 /* Phase Bars */
@@ -233,7 +257,8 @@
     min-width: 200px;
   }
 
-  .timeline-column-header {
+  .timeline-column-header,
+  .timeline-column-body {
     min-width: 60px;
   }
 }
@@ -245,7 +270,8 @@
     min-width: 150px;
   }
 
-  .timeline-column-header {
+  .timeline-column-header,
+  .timeline-column-body {
     min-width: 50px;
   }
 

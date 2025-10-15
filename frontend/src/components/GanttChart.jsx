@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import './GanttChart.css';
 
 const PHASE_COLORS = {
@@ -14,6 +14,45 @@ const MILESTONE_COLORS = {
 };
 
 function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
+  const headerRef = useRef(null);
+  const bodyRef = useRef(null);
+  const isSyncingRef = useRef(false);
+
+  // Synchronize scroll between header and body
+  useEffect(() => {
+    const header = headerRef.current;
+    const body = bodyRef.current;
+
+    if (!header || !body) return;
+
+    const syncHeaderScroll = () => {
+      if (!isSyncingRef.current) {
+        isSyncingRef.current = true;
+        body.scrollLeft = header.scrollLeft;
+        requestAnimationFrame(() => {
+          isSyncingRef.current = false;
+        });
+      }
+    };
+
+    const syncBodyScroll = () => {
+      if (!isSyncingRef.current) {
+        isSyncingRef.current = true;
+        header.scrollLeft = body.scrollLeft;
+        requestAnimationFrame(() => {
+          isSyncingRef.current = false;
+        });
+      }
+    };
+
+    header.addEventListener('scroll', syncHeaderScroll);
+    body.addEventListener('scroll', syncBodyScroll);
+
+    return () => {
+      header.removeEventListener('scroll', syncHeaderScroll);
+      body.removeEventListener('scroll', syncBodyScroll);
+    };
+  }, []);
   // Generate timeline columns based on zoom level and date range
   const timelineColumns = useMemo(() => {
     if (!dateRange.start || !dateRange.end) return [];
@@ -35,12 +74,14 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
     } else if (zoomLevel === 'week') {
       // Weekly columns
       let current = new Date(start);
-      // Start at beginning of week
+      // Start at beginning of week (Sunday)
       current.setDate(current.getDate() - current.getDay());
 
-      while (current <= end) {
-        const weekEnd = new Date(current);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+      // Generate weeks - add one week past the end date to ensure full coverage
+      const extendedEnd = new Date(end);
+      extendedEnd.setDate(extendedEnd.getDate() + 7);
+
+      while (current < extendedEnd) {
         columns.push({
           date: new Date(current),
           label: `${current.getMonth() + 1}/${current.getDate()}`
@@ -48,13 +89,22 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
         current.setDate(current.getDate() + 7);
       }
     } else if (zoomLevel === 'month') {
-      // Monthly columns
+      // Monthly columns with proportional widths based on days in month
       let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      const totalDuration = end.getTime() - start.getTime();
 
       while (current <= end) {
+        const monthStart = new Date(current);
+        const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0); // Last day of month
+
+        // Calculate this month's width as a percentage of the total timeline
+        const monthDuration = Math.min(monthEnd.getTime(), end.getTime()) - Math.max(monthStart.getTime(), start.getTime());
+        const widthPercent = (monthDuration / totalDuration) * 100;
+
         columns.push({
           date: new Date(current),
-          label: current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          label: current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          widthPercent: widthPercent
         });
         current.setMonth(current.getMonth() + 1);
       }
@@ -70,12 +120,23 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
     const totalDuration = timelineEnd - timelineStart;
 
     const start = new Date(startDate).getTime();
-    const left = ((start - timelineStart) / totalDuration) * 100;
+    let left = ((start - timelineStart) / totalDuration) * 100;
 
     if (endDate) {
       const end = new Date(endDate).getTime();
-      const width = ((end - start) / totalDuration) * 100;
-      return { left: `${Math.max(0, left)}%`, width: `${Math.max(0.5, width)}%` };
+
+      // Clamp start and end to timeline boundaries
+      const clampedStart = Math.max(start, timelineStart);
+      const clampedEnd = Math.min(end, timelineEnd);
+
+      // Calculate position and width based on clamped values
+      const clampedLeft = ((clampedStart - timelineStart) / totalDuration) * 100;
+      const clampedWidth = ((clampedEnd - clampedStart) / totalDuration) * 100;
+
+      return {
+        left: `${Math.max(0, clampedLeft)}%`,
+        width: `${Math.max(0.5, clampedWidth)}%`
+      };
     } else {
       // Milestone (point in time)
       return { left: `${Math.max(0, left)}%` };
@@ -94,24 +155,34 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
     <div className="gantt-chart">
       <div className="gantt-header">
         <div className="gantt-sidebar-header">Squad / Project</div>
-        <div className="gantt-timeline-header">
+        <div className="gantt-timeline-header" ref={headerRef}>
           {timelineColumns.map((col, index) => (
-            <div key={index} className="timeline-column-header">
+            <div
+              key={index}
+              className="timeline-column-header"
+              style={col.widthPercent ? { width: `${col.widthPercent}%`, minWidth: 'auto', flexGrow: 0, flexShrink: 0 } : {}}
+            >
               {col.label}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="gantt-body">
+      <div className="gantt-body" ref={bodyRef}>
         {squads.map(squad => (
           <div key={squad.squadId} className="gantt-squad-section">
             <div className="gantt-squad-header">
               <div className="gantt-sidebar">
                 <strong>{squad.squadName}</strong>
               </div>
-              <div className="gantt-timeline">
-                {/* Empty timeline for squad header */}
+              <div className="gantt-timeline-container">
+                {timelineColumns.map((col, index) => (
+                  <div
+                    key={index}
+                    className="timeline-column-body"
+                    style={col.widthPercent ? { width: `${col.widthPercent}%`, minWidth: 'auto', flexGrow: 0, flexShrink: 0 } : {}}
+                  ></div>
+                ))}
               </div>
             </div>
 
@@ -124,63 +195,79 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                   </div>
                 </div>
 
-                <div
-                  className="gantt-timeline"
-                  onClick={() => onProjectClick(project.projectId)}
-                  title="Click to edit project"
-                >
-                  {/* Development Phase */}
-                  {project.developmentPhase && (
-                    <div
-                      className="phase-bar development-phase"
-                      style={{
-                        ...calculatePosition(
-                          project.developmentPhase.startDate,
-                          project.developmentPhase.endDate
-                        ),
-                        backgroundColor: PHASE_COLORS.Development
-                      }}
-                      title={`Development: ${formatDate(project.developmentPhase.startDate)} - ${formatDate(project.developmentPhase.endDate)}`}
-                    >
-                      <span className="phase-label">Dev</span>
-                    </div>
-                  )}
-
-                  {/* Onsite Phases (UAT and Go-Live) */}
-                  {project.onsitePhases.map((phase, index) => {
-                    const weekEnd = new Date(phase.weekStartDate);
-                    weekEnd.setDate(weekEnd.getDate() + 6); // 1 week duration
-
-                    return (
-                      <div
-                        key={index}
-                        className={`phase-bar onsite-phase ${phase.type.toLowerCase()}-phase`}
-                        style={{
-                          ...calculatePosition(phase.weekStartDate, weekEnd),
-                          backgroundColor: PHASE_COLORS[phase.type]
-                        }}
-                        title={`${phase.type}: ${formatDate(phase.weekStartDate)} (${phase.engineerCount} eng)`}
-                      >
-                        <span className="phase-label">{phase.type}</span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Milestones */}
-                  {project.milestones.map((milestone, index) => (
+                <div className="gantt-timeline-container">
+                  {timelineColumns.map((col, index) => (
                     <div
                       key={index}
-                      className={`milestone ${milestone.type.toLowerCase()}-milestone`}
-                      style={{
-                        ...calculatePosition(milestone.date),
-                        borderColor: MILESTONE_COLORS[milestone.type]
-                      }}
-                      title={`${milestone.type}: ${formatDate(milestone.date)}`}
-                    >
-                      <div className="milestone-diamond"></div>
-                      <div className="milestone-label">{milestone.type}</div>
-                    </div>
+                      className="timeline-column-body"
+                      style={col.widthPercent ? { width: `${col.widthPercent}%`, minWidth: 'auto', flexGrow: 0, flexShrink: 0 } : {}}
+                    ></div>
                   ))}
+
+                  <div
+                    className="gantt-timeline-overlay"
+                    onClick={() => onProjectClick(project.projectId)}
+                    title="Click to edit project"
+                  >
+                    {/* Development Phase */}
+                    {project.developmentPhase && (
+                      <div
+                        className="phase-bar development-phase"
+                        style={{
+                          ...calculatePosition(
+                            project.developmentPhase.startDate,
+                            project.developmentPhase.endDate
+                          ),
+                          backgroundColor: PHASE_COLORS.Development
+                        }}
+                        title={`Development: ${formatDate(project.developmentPhase.startDate)} - ${formatDate(project.developmentPhase.endDate)}`}
+                      >
+                        <span className="phase-label">Dev</span>
+                      </div>
+                    )}
+
+                    {/* Onsite Phases (UAT and Go-Live) */}
+                    {project.onsitePhases.map((phase, index) => {
+                      // Find the corresponding milestone date for this phase
+                      const milestone = project.milestones.find(m => m.type === phase.type);
+                      if (!milestone) return null;
+
+                      // The phase starts on the milestone date and lasts 1 week
+                      const phaseStart = new Date(milestone.date);
+                      const phaseEnd = new Date(milestone.date);
+                      phaseEnd.setDate(phaseEnd.getDate() + 6); // 1 week duration (7 days - 1)
+
+                      return (
+                        <div
+                          key={index}
+                          className={`phase-bar onsite-phase ${phase.type.toLowerCase()}-phase`}
+                          style={{
+                            ...calculatePosition(phaseStart, phaseEnd),
+                            backgroundColor: PHASE_COLORS[phase.type]
+                          }}
+                          title={`${phase.type}: ${formatDate(milestone.date)} (${phase.engineerCount} eng)`}
+                        >
+                          <span className="phase-label">{phase.type}</span>
+                        </div>
+                      );
+                    })}
+
+                    {/* Milestones */}
+                    {project.milestones.map((milestone, index) => (
+                      <div
+                        key={index}
+                        className={`milestone ${milestone.type.toLowerCase()}-milestone`}
+                        style={{
+                          ...calculatePosition(milestone.date),
+                          borderColor: MILESTONE_COLORS[milestone.type]
+                        }}
+                        title={`${milestone.type}: ${formatDate(milestone.date)}`}
+                      >
+                        <div className="milestone-diamond"></div>
+                        <div className="milestone-label">{milestone.type}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}

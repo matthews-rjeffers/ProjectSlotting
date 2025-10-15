@@ -472,13 +472,19 @@ namespace ProjectScheduler.Controllers
                 }
             }
 
+            // Use the requested start date, but extend the end date to include all project data
+            // Add 2 weeks of blank space after the last allocation
+            var actualEndDate = overallMaxDate.HasValue && overallMaxDate.Value > rangeEnd
+                ? overallMaxDate.Value.AddDays(14)
+                : rangeEnd;
+
             return Ok(new GanttDataResponse
             {
                 Squads = ganttSquads,
                 DateRange = new DateRange
                 {
-                    MinDate = overallMinDate ?? rangeStart,
-                    MaxDate = overallMaxDate ?? rangeEnd
+                    MinDate = rangeStart,
+                    MaxDate = actualEndDate
                 }
             });
         }

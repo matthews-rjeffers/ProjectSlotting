@@ -88,35 +88,128 @@
   background: #e9ecef;
 }
 
-.squad-filter-buttons {
-  display: flex;
-  gap: 5px;
+.squad-filter-group {
+  position: relative;
 }
 
-.squad-checkboxes {
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+.squad-filter-dropdown {
+  position: relative;
 }
 
-.checkbox-label {
+.squad-filter-btn {
+  min-width: 150px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: #6c757d;
+}
+
+.squad-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.squad-dropdown-actions {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 6px 6px 0 0;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-link {
+  color: #4A90E2;
+  font-weight: 500;
+}
+
+.btn-link:hover {
+  color: #357ABD;
+  text-decoration: underline;
+}
+
+.squad-dropdown-options {
+  overflow-y: auto;
+  max-height: 250px;
+  padding: 8px 0;
+}
+
+.squad-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
   color: #495057;
+  transition: background-color 0.2s;
 }
 
-.checkbox-label input[type="checkbox"] {
+.squad-dropdown-option:hover {
+  background: #f8f9fa;
+}
+
+.squad-dropdown-option input[type="checkbox"] {
   cursor: pointer;
 }
 
-.date-range-display {
-  margin-left: auto;
+.squad-dropdown-option span {
+  flex: 1;
 }
 
-.date-range-text {
+.date-range-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-input {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  color: #495057;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.date-input:hover {
+  border-color: #4A90E2;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.date-separator {
   font-size: 13px;
   color: #6c757d;
   font-weight: 500;

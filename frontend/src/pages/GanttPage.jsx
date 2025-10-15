@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getGanttData } from '../api';
+import { getGanttData, getProject } from '../api';
 import GanttChart from '../components/GanttChart';
 import ProjectForm from '../components/ProjectForm';
 import './GanttPage.css';
@@ -15,6 +15,7 @@ function GanttPage() {
   // Squad filter
   const [selectedSquads, setSelectedSquads] = useState([]);
   const [allSquads, setAllSquads] = useState([]);
+  const [showSquadDropdown, setShowSquadDropdown] = useState(false);
 
   // Date range
   const [dateRange, setDateRange] = useState({ start: null, end: null });
@@ -23,10 +24,24 @@ function GanttPage() {
   const [editingProject, setEditingProject] = useState(null);
 
   useEffect(() => {
-    fetchGanttData();
+    // Fetch with default date range starting from last week
+    const { start, end } = getDefaultDateRange(zoomLevel);
+    fetchGanttData(start.toISOString(), end.toISOString());
   }, []);
 
-  const fetchGanttData = async (startDate = null, endDate = null) => {
+  // Close squad dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showSquadDropdown && !event.target.closest('.squad-filter-dropdown')) {
+        setShowSquadDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSquadDropdown]);
+
+  const fetchGanttData = async (startDate = null, endDate = null, updateDateRange = true) => {
     setLoading(true);
     setError(null);
     try {
@@ -38,11 +53,13 @@ function GanttPage() {
       setAllSquads(response.data.squads);
       setSelectedSquads(squads);
 
-      // Set date range
-      setDateRange({
-        start: new Date(response.data.dateRange.minDate),
-        end: new Date(response.data.dateRange.maxDate)
-      });
+      // Only update date range if requested (not for manual user changes)
+      if (updateDateRange) {
+        setDateRange({
+          start: new Date(response.data.dateRange.minDate),
+          end: new Date(response.data.dateRange.maxDate)
+        });
+      }
     } catch (err) {
       console.error('Error fetching Gantt data:', err);
       setError('Failed to load timeline data');
@@ -51,26 +68,45 @@ function GanttPage() {
     }
   };
 
-  const handleZoomChange = (newZoom) => {
-    setZoomLevel(newZoom);
-
-    // Adjust date range based on zoom level
+  const getDefaultDateRange = (zoomLevel) => {
     const today = new Date();
-    let start = today;
-    let end;
 
-    if (newZoom === 'day') {
-      end = new Date(today);
-      end.setMonth(end.getMonth() + 1); // 1 month
-    } else if (newZoom === 'week') {
-      end = new Date(today);
-      end.setMonth(end.getMonth() + 3); // 3 months
-    } else if (newZoom === 'month') {
-      end = new Date(today);
-      end.setFullYear(end.getFullYear() + 1); // 12 months
+    // Start from one week (7 days) before today
+    const start = new Date(today);
+    start.setDate(start.getDate() - 7);
+
+    let end;
+    if (zoomLevel === 'day') {
+      end = new Date(start);
+      end.setMonth(end.getMonth() + 1); // 1 month from start
+    } else if (zoomLevel === 'week') {
+      end = new Date(start);
+      end.setMonth(end.getMonth() + 3); // 3 months from start
+    } else if (zoomLevel === 'month') {
+      end = new Date(start);
+      end.setFullYear(end.getFullYear() + 1); // 12 months from start
     }
 
-    fetchGanttData(start.toISOString(), end.toISOString());
+    return { start, end };
+  };
+
+  const handleZoomChange = (newZoom) => {
+    setZoomLevel(newZoom);
+    // Keep the current date range instead of recalculating
+    // Just fetch data with the existing date range
+    if (dateRange.start && dateRange.end) {
+      fetchGanttData(dateRange.start.toISOString(), dateRange.end.toISOString(), false);
+    }
+  };
+
+  const handleDateRangeChange = (startDate, endDate) => {
+    // Update the date range state immediately with user's selection
+    setDateRange({
+      start: new Date(startDate),
+      end: new Date(endDate)
+    });
+    // Fetch data without overwriting the date range
+    fetchGanttData(startDate, endDate, false);
   };
 
   const handleSquadFilterChange = (squadId) => {
@@ -91,14 +127,14 @@ function GanttPage() {
     setSelectedSquads([]);
   };
 
-  const handleProjectClick = (projectId) => {
-    // Find the project in the gantt data
-    for (const squad of ganttData.squads) {
-      const project = squad.projects.find(p => p.projectId === projectId);
-      if (project) {
-        setEditingProject(project);
-        break;
-      }
+  const handleProjectClick = async (projectId) => {
+    // Fetch the full project data from the API
+    try {
+      const response = await getProject(projectId);
+      setEditingProject(response.data);
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      alert('Failed to load project details');
     }
   };
 
@@ -148,37 +184,77 @@ function GanttPage() {
         </div>
 
         {/* Squad Filter */}
-        <div className="control-group">
+        <div className="control-group squad-filter-group">
           <label>Squads:</label>
-          <div className="squad-filter-buttons">
-            <button className="btn btn-sm btn-outline" onClick={handleSelectAllSquads}>
-              All
+          <div className="squad-filter-dropdown">
+            <button
+              className="btn btn-sm btn-outline squad-filter-btn"
+              onClick={() => setShowSquadDropdown(!showSquadDropdown)}
+            >
+              {selectedSquads.length === allSquads.length
+                ? 'All Squads'
+                : selectedSquads.length === 0
+                ? 'No Squads'
+                : `${selectedSquads.length} Squad${selectedSquads.length > 1 ? 's' : ''}`}
+              <span className="dropdown-arrow">{showSquadDropdown ? '▲' : '▼'}</span>
             </button>
-            <button className="btn btn-sm btn-outline" onClick={handleDeselectAllSquads}>
-              None
-            </button>
-          </div>
-          <div className="squad-checkboxes">
-            {allSquads.map(squad => (
-              <label key={squad.squadId} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedSquads.includes(squad.squadId)}
-                  onChange={() => handleSquadFilterChange(squad.squadId)}
-                />
-                {squad.squadName}
-              </label>
-            ))}
+
+            {showSquadDropdown && (
+              <div className="squad-dropdown-menu">
+                <div className="squad-dropdown-actions">
+                  <button
+                    className="btn btn-xs btn-link"
+                    onClick={(e) => { e.stopPropagation(); handleSelectAllSquads(); }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    className="btn btn-xs btn-link"
+                    onClick={(e) => { e.stopPropagation(); handleDeselectAllSquads(); }}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="squad-dropdown-options">
+                  {allSquads.map(squad => (
+                    <label key={squad.squadId} className="squad-dropdown-option">
+                      <input
+                        type="checkbox"
+                        checked={selectedSquads.includes(squad.squadId)}
+                        onChange={() => handleSquadFilterChange(squad.squadId)}
+                      />
+                      <span>{squad.squadName}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Date Range Display */}
+        {/* Date Range Controls */}
         {dateRange.start && dateRange.end && (
-          <div className="control-group date-range-display">
+          <div className="control-group date-range-controls">
             <label>Date Range:</label>
-            <span className="date-range-text">
-              {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
-            </span>
+            <input
+              type="date"
+              className="date-input"
+              value={dateRange.start.toISOString().split('T')[0]}
+              onChange={(e) => {
+                const newStart = new Date(e.target.value);
+                handleDateRangeChange(newStart.toISOString(), dateRange.end.toISOString());
+              }}
+            />
+            <span className="date-separator">to</span>
+            <input
+              type="date"
+              className="date-input"
+              value={dateRange.end.toISOString().split('T')[0]}
+              onChange={(e) => {
+                const newEnd = new Date(e.target.value);
+                handleDateRangeChange(dateRange.start.toISOString(), newEnd.toISOString());
+              }}
+            />
           </div>
         )}
       </div>
@@ -199,6 +275,7 @@ function GanttPage() {
 
       {!loading && !error && filteredSquads.length > 0 && (
         <GanttChart
+          key={`${dateRange.start?.getTime()}-${dateRange.end?.getTime()}-${zoomLevel}`}
           squads={filteredSquads}
           dateRange={dateRange}
           zoomLevel={zoomLevel}

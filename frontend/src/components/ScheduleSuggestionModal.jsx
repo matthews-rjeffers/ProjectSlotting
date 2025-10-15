@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSquadRecommendations, applyScheduleSuggestion } from '../api';
+import { getSquadRecommendations, applyScheduleSuggestion, getAlgorithmComparison } from '../api';
 import './ScheduleSuggestionModal.css';
 
 // Helper function to get next Monday
@@ -27,6 +27,9 @@ const getNextMonday = () => {
 const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+  const [algorithmComparison, setAlgorithmComparison] = useState([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparingSquadId, setComparingSquadId] = useState(null);
   const [bufferPercentage, setBufferPercentage] = useState(project.bufferPercentage || 20);
   const [algorithmType, setAlgorithmType] = useState('strict'); // 'greedy', 'strict', or 'delayed'
   const [startDate, setStartDate] = useState(getNextMonday());
@@ -35,6 +38,7 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Load squad recommendations on mount
     loadRecommendations();
   }, []);
 
@@ -43,7 +47,29 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
     if (recommendations.length > 0) {
       loadRecommendations();
     }
-  }, [bufferPercentage, algorithmType, startDate]);
+  }, [bufferPercentage, startDate, algorithmType]);
+
+  const loadAlgorithmComparison = async (squadId) => {
+    setLoading(true);
+    setError('');
+    try {
+      const comparisonResponse = await getAlgorithmComparison(
+        project.projectId,
+        squadId,
+        bufferPercentage,
+        startDate
+      );
+
+      setAlgorithmComparison(comparisonResponse.data);
+      setComparingSquadId(squadId);
+      setShowComparison(true);
+    } catch (error) {
+      console.error('Error loading algorithm comparison:', error);
+      setError('Failed to load algorithm comparison');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadRecommendations = async () => {
     setLoading(true);
@@ -68,6 +94,15 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectAlgorithm = (algoType) => {
+    setAlgorithmType(algoType);
+    setShowComparison(false);
+    setAlgorithmComparison([]);
+    setComparingSquadId(null);
+    // Reload recommendations with the new algorithm
+    loadRecommendations();
   };
 
   const handleApplySuggestion = async () => {
@@ -118,7 +153,85 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
             <p>Estimated Dev Hours: <strong>{project.estimatedDevHours}h</strong></p>
           </div>
 
-          <div className="suggestion-controls">
+          {loading && (
+            <div className="loading-message">Loading algorithm comparison...</div>
+          )}
+
+          {showComparison && !loading && algorithmComparison.length > 0 && (
+            <div className="algorithm-comparison-section">
+              <div className="comparison-header">
+                <h4>Compare Scheduling Algorithms</h4>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    setShowComparison(false);
+                    setAlgorithmComparison([]);
+                    setComparingSquadId(null);
+                  }}
+                >
+                  ← Back to Squads
+                </button>
+              </div>
+              <p className="comparison-hint">
+                Comparing algorithms for {recommendations.find(r => r.squadId === comparingSquadId)?.squadName || 'selected squad'}.
+                Select the algorithm that best fits your needs:
+              </p>
+              <div className="algorithm-cards">
+                {algorithmComparison.map((algo) => (
+                  <div
+                    key={algo.algorithmType}
+                    className={`algorithm-card ${!algo.canAllocate ? 'unavailable' : ''}`}
+                    onClick={() => algo.canAllocate && handleSelectAlgorithm(algo.algorithmType)}
+                    style={{ cursor: algo.canAllocate ? 'pointer' : 'not-allowed' }}
+                  >
+                    <div className="algorithm-header">
+                      <h5>{algo.algorithmName}</h5>
+                      {algo.canAllocate ? (
+                        <span className="algorithm-status available">✓ Available</span>
+                      ) : (
+                        <span className="algorithm-status unavailable">✗ Unavailable</span>
+                      )}
+                    </div>
+                    <p className="algorithm-description">{algo.description}</p>
+
+                    {algo.canAllocate ? (
+                      <>
+                        <div className="algorithm-dates">
+                          <div className="date-item">
+                            <span className="date-label">Start:</span>
+                            <span className="date-value">{formatDate(algo.suggestedStartDate)}</span>
+                          </div>
+                          <div className="date-item">
+                            <span className="date-label">CRP:</span>
+                            <span className="date-value">{formatDate(algo.estimatedCrpDate)}</span>
+                          </div>
+                          <div className="date-item">
+                            <span className="date-label">Duration:</span>
+                            <span className="date-value">{algo.estimatedDurationDays} days</span>
+                          </div>
+                        </div>
+                        <div className="algorithm-pros-cons">
+                          <div className="pros">
+                            <strong>✓</strong> {algo.pros}
+                          </div>
+                          <div className="cons">
+                            <strong>✗</strong> {algo.cons}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="algorithm-error">
+                        {algo.message}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!showComparison && (
+            <div className="suggestion-controls">
             <div className="control-group">
               <label htmlFor="algorithm-select">Algorithm Type</label>
               <select
@@ -176,20 +289,19 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
               </div>
             </div>
           </div>
+          )}
 
-          {loading && (
+          {!showComparison && loading && (
             <div className="loading-message">Loading squad recommendations...</div>
           )}
 
-          {!loading && recommendations.length > 0 && (
+          {!showComparison && !loading && recommendations.length > 0 && (
             <div className="squad-recommendations">
               <h4>Recommended Squads</h4>
               {recommendations.map((rec, index) => (
                 <div
                   key={rec.squadId}
                   className={`squad-card ${selectedRecommendation?.squadId === rec.squadId ? 'selected' : ''} ${!rec.canAllocate ? 'unavailable' : ''}`}
-                  onClick={() => rec.canAllocate && setSelectedRecommendation(rec)}
-                  style={{ cursor: rec.canAllocate ? 'pointer' : 'not-allowed' }}
                 >
                   <div className="squad-header">
                     <div className="squad-name-section">
@@ -220,16 +332,38 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                       Unable to allocate: {rec.suggestion.message}
                     </div>
                   )}
+                  <div className="squad-actions">
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        loadAlgorithmComparison(rec.squadId);
+                      }}
+                      disabled={loading}
+                    >
+                      Compare Algorithms
+                    </button>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRecommendation(rec);
+                      }}
+                      disabled={!rec.canAllocate}
+                    >
+                      Select Squad
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {error && (
+          {!showComparison && error && (
             <div className="error-message">{error}</div>
           )}
 
-          {selectedRecommendation && selectedRecommendation.suggestion && (
+          {!showComparison && selectedRecommendation && selectedRecommendation.suggestion && (
             <div className={`suggestion-result ${selectedRecommendation.canAllocate ? 'can-allocate' : 'cannot-allocate'}`}>
               {selectedRecommendation.canAllocate ? (
                 <>

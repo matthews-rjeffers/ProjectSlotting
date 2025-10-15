@@ -62,6 +62,14 @@ export const getAlgorithmComparison = (projectId, squadId, bufferPercentage, sta
   });
 export const checkConflicts = (projectId, data) =>
   api.post(`/projects/${projectId}/check-conflicts`, data);
+export const getGanttData = (startDate, endDate, squadId) =>
+  api.get('/projects/gantt-data', {
+    params: {
+      ...(startDate && { startDate }),
+      ...(endDate && { endDate }),
+      ...(squadId && { squadId })
+    }
+  });
 
 // Team Members API
 export const getTeamMembers = (squadId) =>

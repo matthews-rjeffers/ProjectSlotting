@@ -1,0 +1,147 @@
+.gantt-page {
+  padding: 20px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.gantt-page-header {
+  margin-bottom: 20px;
+}
+
+.gantt-page-header h1 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+}
+
+.gantt-page-header .subtitle {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.gantt-controls {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-group label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 5px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sm:hover {
+  background: #e9ecef;
+}
+
+.btn-sm.btn-primary {
+  background: #4A90E2;
+  color: white;
+  border-color: #4A90E2;
+}
+
+.btn-sm.btn-primary:hover {
+  background: #357ABD;
+  border-color: #357ABD;
+}
+
+.btn-sm.btn-secondary {
+  background: white;
+  color: #495057;
+  border-color: #ced4da;
+}
+
+.btn-sm.btn-outline {
+  background: white;
+  color: #495057;
+  border-color: #ced4da;
+}
+
+.btn-sm.btn-outline:hover {
+  background: #e9ecef;
+}
+
+.squad-filter-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.squad-checkboxes {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #495057;
+}
+
+.checkbox-label input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.date-range-display {
+  margin-left: auto;
+}
+
+.date-range-text {
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.loading-message,
+.error-message,
+.empty-message {
+  padding: 40px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.loading-message {
+  color: #6c757d;
+}
+
+.error-message {
+  color: #dc3545;
+  background: #f8d7da;
+  border-radius: 8px;
+}
+
+.empty-message {
+  color: #6c757d;
+  background: #f8f9fa;
+  border-radius: 8px;
+}

@@ -1,0 +1,285 @@
+.gantt-chart {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.gantt-header {
+  display: flex;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gantt-sidebar-header {
+  width: 250px;
+  min-width: 250px;
+  padding: 12px;
+  font-weight: 700;
+  color: #495057;
+  border-right: 1px solid #dee2e6;
+  background: #f8f9fa;
+}
+
+.gantt-timeline-header {
+  display: flex;
+  flex: 1;
+  overflow-x: auto; /* Enable horizontal scrolling - will sync with body */
+  overflow-y: hidden;
+  min-width: 0; /* Allow flex shrinking */
+}
+
+.timeline-column-header {
+  min-width: 80px;
+  flex-shrink: 0; /* Prevent columns from shrinking */
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+  border-right: 1px solid #e9ecef;
+}
+
+.gantt-body {
+  max-height: calc(100vh - 300px);
+  overflow-x: auto; /* Enable horizontal scrolling - will sync with header */
+  overflow-y: auto; /* Enable vertical scrolling independently */
+}
+
+.gantt-squad-section {
+  border-bottom: 2px solid #dee2e6;
+  min-width: fit-content; /* Ensure width expands for content */
+}
+
+.gantt-squad-header {
+  display: flex;
+  background: #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+  min-width: fit-content; /* Ensure width expands for content */
+}
+
+.gantt-squad-header .gantt-sidebar {
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.gantt-project-row {
+  display: flex;
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.2s;
+  min-width: fit-content; /* Ensure width expands for content */
+}
+
+.gantt-project-row:hover {
+  background: #f8f9fa;
+}
+
+.gantt-sidebar {
+  width: 250px;
+  min-width: 250px;
+  padding: 12px;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+}
+
+.project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-number {
+  font-weight: 600;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.project-customer {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.gantt-timeline-container {
+  display: flex;
+  flex: 1;
+  position: relative;
+  min-height: 60px;
+  overflow: hidden; /* Prevent overlay from expanding container */
+}
+
+.timeline-column-body {
+  min-width: 80px;
+  flex-shrink: 0;
+  border-right: 1px solid #f1f3f5;
+}
+
+.gantt-timeline-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Phase Bars */
+.phase-bar {
+  position: absolute;
+  height: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 2;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.phase-bar:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  z-index: 3;
+}
+
+.phase-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+}
+
+/* Milestones */
+.milestone {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.milestone-diamond {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 3px solid;
+  border-color: inherit;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.milestone-label {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: #495057;
+  background: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.milestone:hover .milestone-diamond {
+  transform: rotate(45deg) scale(1.2);
+}
+
+.milestone:hover .milestone-label {
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* Legend */
+.gantt-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.legend-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #495057;
+}
+
+.legend-items {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #495057;
+}
+
+.legend-color {
+  width: 20px;
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.legend-milestone {
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 2px solid;
+  border-color: inherit;
+  transform: rotate(45deg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .gantt-sidebar-header,
+  .gantt-sidebar {
+    width: 200px;
+    min-width: 200px;
+  }
+
+  .timeline-column-header,
+  .timeline-column-body {
+    min-width: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .gantt-sidebar-header,
+  .gantt-sidebar {
+    width: 150px;
+    min-width: 150px;
+  }
+
+  .timeline-column-header,
+  .timeline-column-body {
+    min-width: 50px;
+  }
+
+  .phase-label {
+    font-size: 10px;
+  }
+
+  .milestone-label {
+    display: none; /* Hide labels on mobile */
+  }
+}

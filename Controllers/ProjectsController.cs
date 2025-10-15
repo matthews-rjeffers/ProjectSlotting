@@ -326,6 +326,169 @@ namespace ProjectScheduler.Controllers
             return Ok(result);
         }
 
+        // GET: api/Projects/gantt-data
+        [HttpGet("gantt-data")]
+        public async Task<ActionResult<GanttDataResponse>> GetGanttData(
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] int? squadId = null)
+        {
+            // Default to 3 months if no date range specified
+            var rangeStart = startDate ?? DateTime.Today;
+            var rangeEnd = endDate ?? rangeStart.AddMonths(3);
+
+            // Get all squads with active allocations
+            var squadsQuery = _context.Squads
+                .Include(s => s.TeamMembers)
+                .Where(s => s.IsActive);
+
+            if (squadId.HasValue)
+            {
+                squadsQuery = squadsQuery.Where(s => s.SquadId == squadId.Value);
+            }
+
+            var squads = await squadsQuery.ToListAsync();
+
+            var ganttSquads = new List<GanttSquad>();
+            DateTime? overallMinDate = null;
+            DateTime? overallMaxDate = null;
+
+            foreach (var squad in squads)
+            {
+                // Get projects allocated to this squad within the date range
+                var projectIds = await _context.ProjectAllocations
+                    .Where(pa => pa.SquadId == squad.SquadId)
+                    .Select(pa => pa.ProjectId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!projectIds.Any())
+                {
+                    continue; // Skip squads with no projects
+                }
+
+                var projects = await _context.Projects
+                    .Where(p => projectIds.Contains(p.ProjectId))
+                    .Include(p => p.ProjectAllocations)
+                    .Include(p => p.OnsiteSchedules)
+                    .ToListAsync();
+
+                var ganttProjects = new List<GanttProject>();
+
+                foreach (var project in projects)
+                {
+                    // Get development phase (Development allocations)
+                    var devAllocations = project.ProjectAllocations
+                        .Where(pa => pa.SquadId == squad.SquadId && pa.AllocationType == "Development")
+                        .ToList();
+
+                    DevelopmentPhase? devPhase = null;
+                    if (devAllocations.Any())
+                    {
+                        var devStart = devAllocations.Min(a => a.AllocationDate);
+                        var devEnd = devAllocations.Max(a => a.AllocationDate);
+                        devPhase = new DevelopmentPhase
+                        {
+                            StartDate = devStart.ToDateTime(TimeOnly.MinValue),
+                            EndDate = devEnd.ToDateTime(TimeOnly.MinValue)
+                        };
+
+                        // Track overall date range
+                        if (!overallMinDate.HasValue || devPhase.StartDate < overallMinDate)
+                            overallMinDate = devPhase.StartDate;
+                        if (!overallMaxDate.HasValue || devPhase.EndDate > overallMaxDate)
+                            overallMaxDate = devPhase.EndDate;
+                    }
+
+                    // Get milestones
+                    var milestones = new List<Milestone>();
+                    if (project.Crpdate.HasValue)
+                    {
+                        milestones.Add(new Milestone { Type = "CRP", Date = project.Crpdate.Value });
+                        if (!overallMinDate.HasValue || project.Crpdate.Value < overallMinDate)
+                            overallMinDate = project.Crpdate.Value;
+                        if (!overallMaxDate.HasValue || project.Crpdate.Value > overallMaxDate)
+                            overallMaxDate = project.Crpdate.Value;
+                    }
+                    if (project.Uatdate.HasValue)
+                    {
+                        milestones.Add(new Milestone { Type = "UAT", Date = project.Uatdate.Value });
+                        if (!overallMinDate.HasValue || project.Uatdate.Value < overallMinDate)
+                            overallMinDate = project.Uatdate.Value;
+                        if (!overallMaxDate.HasValue || project.Uatdate.Value > overallMaxDate)
+                            overallMaxDate = project.Uatdate.Value;
+                    }
+                    if (project.GoLiveDate.HasValue)
+                    {
+                        milestones.Add(new Milestone { Type = "GoLive", Date = project.GoLiveDate.Value });
+                        if (!overallMinDate.HasValue || project.GoLiveDate.Value < overallMinDate)
+                            overallMinDate = project.GoLiveDate.Value;
+                        if (!overallMaxDate.HasValue || project.GoLiveDate.Value > overallMaxDate)
+                            overallMaxDate = project.GoLiveDate.Value;
+                    }
+
+                    // Get onsite phases
+                    var onsitePhases = project.OnsiteSchedules
+                        .Select(os => new OnsitePhase
+                        {
+                            Type = os.OnsiteType,
+                            WeekStartDate = os.WeekStartDate,
+                            EngineerCount = os.EngineerCount,
+                            TotalHours = os.TotalHours
+                        })
+                        .ToList();
+
+                    foreach (var phase in onsitePhases)
+                    {
+                        if (!overallMinDate.HasValue || phase.WeekStartDate < overallMinDate)
+                            overallMinDate = phase.WeekStartDate;
+                        if (!overallMaxDate.HasValue || phase.WeekStartDate > overallMaxDate)
+                            overallMaxDate = phase.WeekStartDate;
+                    }
+
+                    // Only include project if it has data in the visible range
+                    if (devPhase != null || milestones.Any() || onsitePhases.Any())
+                    {
+                        ganttProjects.Add(new GanttProject
+                        {
+                            ProjectId = project.ProjectId,
+                            ProjectNumber = project.ProjectNumber,
+                            CustomerName = project.CustomerName,
+                            DevelopmentPhase = devPhase,
+                            Milestones = milestones,
+                            OnsitePhases = onsitePhases
+                        });
+                    }
+                }
+
+                if (ganttProjects.Any())
+                {
+                    ganttSquads.Add(new GanttSquad
+                    {
+                        SquadId = squad.SquadId,
+                        SquadName = squad.SquadName,
+                        Projects = ganttProjects
+                    });
+                }
+            }
+
+            // Use the requested start date, but extend the end date to include all project data
+            // Add 2 weeks of blank space after the last allocation
+            var actualEndDate = overallMaxDate.HasValue && overallMaxDate.Value > rangeEnd
+                ? overallMaxDate.Value.AddDays(14)
+                : rangeEnd;
+
+            return Ok(new GanttDataResponse
+            {
+                Squads = ganttSquads,
+                DateRange = new DateRange
+                {
+                    MinDate = rangeStart,
+                    MaxDate = actualEndDate
+                }
+            });
+        }
+
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.ProjectId == id);

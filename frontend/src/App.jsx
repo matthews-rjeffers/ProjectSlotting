@@ -4,6 +4,7 @@ import SquadsPage from './pages/SquadsPage';
 import TeamsPage from './pages/TeamsPage';
 import CapacityPage from './pages/CapacityPage';
 import ProjectsPage from './pages/ProjectsPage';
+import GanttPage from './pages/GanttPage';
 import AiQueryPage from './pages/AiQueryPage';
 import './App.css';
 
@@ -19,6 +20,9 @@ function App() {
             </NavLink>
             <NavLink to="/projects" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               Projects
+            </NavLink>
+            <NavLink to="/gantt" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              Timeline
             </NavLink>
             <NavLink to="/squads" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               Manage Squads
@@ -36,6 +40,7 @@ function App() {
           <Route path="/" element={<CapacityPage />} />
           <Route path="/capacity" element={<CapacityPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/gantt" element={<GanttPage />} />
           <Route path="/squads" element={<SquadsPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/ai-query" element={<AiQueryPage />} />

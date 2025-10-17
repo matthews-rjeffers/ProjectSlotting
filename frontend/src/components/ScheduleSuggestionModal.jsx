@@ -418,7 +418,11 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                       <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.suggestedStartDate)}</span>
                     </div>
                     <div className="schedule-row">
-                      <span className="schedule-label">Code Complete (CRP):</span>
+                      <span className="schedule-label">Code Complete Date:</span>
+                      <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.estimatedCodeCompleteDate)}</span>
+                    </div>
+                    <div className="schedule-row">
+                      <span className="schedule-label">CRP Date:</span>
                       <span className="schedule-value">{formatDate(selectedRecommendation.suggestion.estimatedCrpDate)}</span>
                     </div>
                     <div className="schedule-row">

@@ -278,44 +278,86 @@ namespace ProjectScheduler.Services
                 project.BufferPercentage = suggestion.BufferPercentage;
                 project.UpdatedDate = DateTime.UtcNow;
 
-                // Use flexible allocation schedule if available, otherwise fall back to uniform allocation
-                if (suggestion.AllocationSchedule != null && suggestion.AllocationSchedule.Any())
-                {
-                    Console.WriteLine($"[APPLY SCHEDULE] Using flexible allocation with {suggestion.AllocationSchedule.Count} days");
+                // NEW: Create 90/10 split allocations
+                // Phase 1: 90% from Start → Code Complete
+                // Phase 2: 10% from CRP → UAT
 
-                    // Create allocations based on the flexible schedule
-                    foreach (var (date, hours) in suggestion.AllocationSchedule)
+                var ninetyPercentHours = suggestion.BufferedDevHours * 0.9m;
+                var tenPercentHours = suggestion.BufferedDevHours * 0.1m;
+
+                Console.WriteLine($"[APPLY SCHEDULE] === Creating 90/10 Split Allocations ===");
+                Console.WriteLine($"[APPLY SCHEDULE] Total buffered hours: {suggestion.BufferedDevHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] 90% (Start→CodeComplete): {ninetyPercentHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] 10% (CRP→UAT): {tenPercentHours}h");
+
+                // Phase 1: 90% allocation from Start to Code Complete
+                var phase1Start = suggestion.SuggestedStartDate;
+                var phase1End = suggestion.EstimatedCodeCompleteDate;
+                var phase1WorkingDays = GetWorkingDays(phase1Start, phase1End);
+
+                if (phase1WorkingDays <= 0)
+                {
+                    Console.WriteLine($"[APPLY SCHEDULE] ERROR: No working days from Start to Code Complete");
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var phase1HoursPerDay = ninetyPercentHours / phase1WorkingDays;
+                Console.WriteLine($"[APPLY SCHEDULE] Phase 1: {phase1Start:yyyy-MM-dd} to {phase1End:yyyy-MM-dd} ({phase1WorkingDays} days, {phase1HoursPerDay:F2}h/day)");
+
+                var currentDate = phase1Start;
+                while (currentDate <= phase1End)
+                {
+                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
                     {
                         var allocation = new ProjectAllocation
                         {
                             ProjectId = projectId,
                             SquadId = squadId,
-                            AllocationDate = DateOnly.FromDateTime(date),
-                            AllocatedHours = hours,
+                            AllocationDate = DateOnly.FromDateTime(currentDate),
+                            AllocatedHours = phase1HoursPerDay,
                             AllocationType = "Development",
                             CreatedDate = DateTime.UtcNow
                         };
                         _context.ProjectAllocations.Add(allocation);
-                        Console.WriteLine($"[APPLY SCHEDULE] {date:yyyy-MM-dd}: {hours}h");
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 1: {currentDate:yyyy-MM-dd}: {phase1HoursPerDay:F2}h");
                     }
+                    currentDate = currentDate.AddDays(1);
                 }
-                else
-                {
-                    Console.WriteLine($"[APPLY SCHEDULE] Using uniform allocation");
-                    // Fall back to uniform allocation
-                    var allocationSuccess = await _allocationService.AllocateProjectToSquad(
-                        projectId,
-                        squadId,
-                        suggestion.SuggestedStartDate,
-                        suggestion.EstimatedUatDate,
-                        suggestion.BufferedDevHours
-                    );
 
-                    if (!allocationSuccess)
+                // Phase 2: 10% allocation from CRP to UAT
+                var phase2Start = suggestion.EstimatedCrpDate;
+                var phase2End = suggestion.EstimatedUatDate;
+                var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
+
+                if (phase2WorkingDays <= 0)
+                {
+                    Console.WriteLine($"[APPLY SCHEDULE] ERROR: No working days from CRP to UAT");
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var phase2HoursPerDay = tenPercentHours / phase2WorkingDays;
+                Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {phase2Start:yyyy-MM-dd} to {phase2End:yyyy-MM-dd} ({phase2WorkingDays} days, {phase2HoursPerDay:F2}h/day)");
+
+                currentDate = phase2Start;
+                while (currentDate <= phase2End)
+                {
+                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
                     {
-                        await transaction.RollbackAsync();
-                        return false;
+                        var allocation = new ProjectAllocation
+                        {
+                            ProjectId = projectId,
+                            SquadId = squadId,
+                            AllocationDate = DateOnly.FromDateTime(currentDate),
+                            AllocatedHours = phase2HoursPerDay,
+                            AllocationType = "Development",
+                            CreatedDate = DateTime.UtcNow
+                        };
+                        _context.ProjectAllocations.Add(allocation);
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {currentDate:yyyy-MM-dd}: {phase2HoursPerDay:F2}h");
                     }
+                    currentDate = currentDate.AddDays(1);
                 }
 
                 // Clear existing onsite schedules for this project

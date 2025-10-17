@@ -38,24 +38,25 @@ namespace ProjectScheduler.Services
 
             var allocations = new List<ProjectAllocation>();
 
-            // NEW LOGIC: 90/10 split
-            // Phase 1: 90% of dev hours from Start → CodeComplete
-            // Phase 2: 10% of dev hours from CRP → UAT
+            // NEW LOGIC: Sliding scale split with 40-hour cap for CRP→UAT
+            // Phase 1: Bulk dev hours from Start → CodeComplete
+            // Phase 2: Polish hours from CRP → UAT (max 40 hours)
 
             var codeCompleteDate = project.CodeCompleteDate ?? crpDate;
             var uatDate = project.Uatdate ?? crpDate;
 
-            var ninetyPercentHours = totalDevHours * 0.9m;
-            var tenPercentHours = totalDevHours * 0.1m;
+            // Calculate CRP→UAT hours with sliding scale (10% up to 40 hour cap)
+            var crpToUatHours = Math.Min(totalDevHours * 0.1m, 40m);
+            var startToCodeCompleteHours = totalDevHours - crpToUatHours;
 
-            // Phase 1: Allocate 90% from Start to CodeComplete
+            // Phase 1: Allocate Start→CodeComplete hours
             var phase1WorkingDays = GetWorkingDays(startDate, codeCompleteDate);
 
-            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: 90% DEV HOURS (Start → CodeComplete) ===");
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: BULK DEV HOURS (Start → CodeComplete) ===");
             Console.WriteLine($"[ALLOCATION DEBUG] Project: {project.ProjectNumber}, Squad: {squadId}");
             Console.WriteLine($"[ALLOCATION DEBUG] Period: {startDate:yyyy-MM-dd} to {codeCompleteDate:yyyy-MM-dd}");
             Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase1WorkingDays.Count}");
-            Console.WriteLine($"[ALLOCATION DEBUG] 90% of dev hours: {ninetyPercentHours}h");
+            Console.WriteLine($"[ALLOCATION DEBUG] Start→CodeComplete hours: {startToCodeCompleteHours}h");
 
             if (phase1WorkingDays.Count == 0)
             {
@@ -63,7 +64,7 @@ namespace ProjectScheduler.Services
                 return false;
             }
 
-            var phase1HoursPerDay = ninetyPercentHours / phase1WorkingDays.Count;
+            var phase1HoursPerDay = startToCodeCompleteHours / phase1WorkingDays.Count;
             Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 hours per day: {phase1HoursPerDay}h");
 
             foreach (var day in phase1WorkingDays)
@@ -89,13 +90,13 @@ namespace ProjectScheduler.Services
 
             Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 complete: {phase1WorkingDays.Count} days allocated");
 
-            // Phase 2: Allocate 10% from CRP to UAT
+            // Phase 2: Allocate CRP→UAT hours (polish phase, max 40 hours)
             var phase2WorkingDays = GetWorkingDays(crpDate, uatDate);
 
-            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 2: 10% DEV HOURS (CRP → UAT) ===");
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 2: POLISH DEV HOURS (CRP → UAT) ===");
             Console.WriteLine($"[ALLOCATION DEBUG] Period: {crpDate:yyyy-MM-dd} to {uatDate:yyyy-MM-dd}");
             Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase2WorkingDays.Count}");
-            Console.WriteLine($"[ALLOCATION DEBUG] 10% of dev hours: {tenPercentHours}h");
+            Console.WriteLine($"[ALLOCATION DEBUG] CRP→UAT hours (max 40): {crpToUatHours}h");
 
             if (phase2WorkingDays.Count == 0)
             {
@@ -103,7 +104,7 @@ namespace ProjectScheduler.Services
                 return false;
             }
 
-            var phase2HoursPerDay = tenPercentHours / phase2WorkingDays.Count;
+            var phase2HoursPerDay = crpToUatHours / phase2WorkingDays.Count;
             Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 hours per day: {phase2HoursPerDay}h");
 
             foreach (var day in phase2WorkingDays)

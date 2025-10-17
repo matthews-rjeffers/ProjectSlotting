@@ -165,30 +165,31 @@ namespace ProjectScheduler.Services
             else
             {
                 // No Go-Live date - work FORWARD
-                // NEW: Allocate 90% of hours to find Code Complete Date
-                var ninetyPercentHours = bufferedHours * 0.9m;
+                // NEW: Calculate CRP→UAT hours with sliding scale (max 40 hours)
+                var crpToUatHours = Math.Min(bufferedHours * 0.1m, 40m);
+                var startToCodeCompleteHours = bufferedHours - crpToUatHours;
 
                 if (useGreedy)
                 {
-                    // Try flexible/greedy allocation for 90%
-                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, ninetyPercentHours, dailyCapacity);
+                    // Try flexible/greedy allocation for Start→CodeComplete phase
+                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, startToCodeCompleteHours, dailyCapacity);
                 }
                 else if (useDelayed)
                 {
                     // For Delayed without Go-Live, calculate estimated date first
-                    var estimatedDays = (int)Math.Ceiling(ninetyPercentHours / dailyCapacity);
+                    var estimatedDays = (int)Math.Ceiling(startToCodeCompleteHours / dailyCapacity);
                     var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedEnd, ninetyPercentHours, dailyCapacity);
+                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedEnd, startToCodeCompleteHours, dailyCapacity);
                 }
                 else
                 {
                     // Try strict (even) allocation - estimate end date first
-                    var estimatedDays = (int)Math.Ceiling(ninetyPercentHours / dailyCapacity);
+                    var estimatedDays = (int)Math.Ceiling(startToCodeCompleteHours / dailyCapacity);
                     var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, ninetyPercentHours, dailyCapacity, estimatedEnd);
+                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, startToCodeCompleteHours, dailyCapacity, estimatedEnd);
                 }
 
-                // Check if we found a schedule for 90%
+                // Check if we found a schedule for Start→CodeComplete phase
                 if (schedule == null)
                 {
                     return new ScheduleSuggestion
@@ -204,7 +205,7 @@ namespace ProjectScheduler.Services
                     };
                 }
 
-                // NEW: Code Complete Date is when 90% is done
+                // NEW: Code Complete Date is when Start→CodeComplete phase is done
                 actualCodeCompleteDate = schedule.EndDate;
 
                 // Code Complete = CRP (when not set)
@@ -278,19 +279,19 @@ namespace ProjectScheduler.Services
                 project.BufferPercentage = suggestion.BufferPercentage;
                 project.UpdatedDate = DateTime.UtcNow;
 
-                // NEW: Create 90/10 split allocations
-                // Phase 1: 90% from Start → Code Complete
-                // Phase 2: 10% from CRP → UAT
+                // NEW: Create sliding scale split allocations with 40-hour cap
+                // Phase 1: Bulk dev from Start → Code Complete
+                // Phase 2: Polish dev from CRP → UAT (max 40 hours)
 
-                var ninetyPercentHours = suggestion.BufferedDevHours * 0.9m;
-                var tenPercentHours = suggestion.BufferedDevHours * 0.1m;
+                var crpToUatHours = Math.Min(suggestion.BufferedDevHours * 0.1m, 40m);
+                var startToCodeCompleteHours = suggestion.BufferedDevHours - crpToUatHours;
 
-                Console.WriteLine($"[APPLY SCHEDULE] === Creating 90/10 Split Allocations ===");
+                Console.WriteLine($"[APPLY SCHEDULE] === Creating Sliding Scale Split Allocations ===");
                 Console.WriteLine($"[APPLY SCHEDULE] Total buffered hours: {suggestion.BufferedDevHours}h");
-                Console.WriteLine($"[APPLY SCHEDULE] 90% (Start→CodeComplete): {ninetyPercentHours}h");
-                Console.WriteLine($"[APPLY SCHEDULE] 10% (CRP→UAT): {tenPercentHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] Start→CodeComplete: {startToCodeCompleteHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] CRP→UAT (max 40h): {crpToUatHours}h");
 
-                // Phase 1: 90% allocation from Start to Code Complete
+                // Phase 1: Bulk dev allocation from Start to Code Complete
                 var phase1Start = suggestion.SuggestedStartDate;
                 var phase1End = suggestion.EstimatedCodeCompleteDate;
                 var phase1WorkingDays = GetWorkingDays(phase1Start, phase1End);
@@ -302,7 +303,7 @@ namespace ProjectScheduler.Services
                     return false;
                 }
 
-                var phase1HoursPerDay = ninetyPercentHours / phase1WorkingDays;
+                var phase1HoursPerDay = startToCodeCompleteHours / phase1WorkingDays;
                 Console.WriteLine($"[APPLY SCHEDULE] Phase 1: {phase1Start:yyyy-MM-dd} to {phase1End:yyyy-MM-dd} ({phase1WorkingDays} days, {phase1HoursPerDay:F2}h/day)");
 
                 var currentDate = phase1Start;
@@ -325,7 +326,7 @@ namespace ProjectScheduler.Services
                     currentDate = currentDate.AddDays(1);
                 }
 
-                // Phase 2: 10% allocation from CRP to UAT
+                // Phase 2: Polish dev allocation from CRP to UAT (max 40 hours)
                 var phase2Start = suggestion.EstimatedCrpDate;
                 var phase2End = suggestion.EstimatedUatDate;
                 var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
@@ -337,7 +338,7 @@ namespace ProjectScheduler.Services
                     return false;
                 }
 
-                var phase2HoursPerDay = tenPercentHours / phase2WorkingDays;
+                var phase2HoursPerDay = crpToUatHours / phase2WorkingDays;
                 Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {phase2Start:yyyy-MM-dd} to {phase2End:yyyy-MM-dd} ({phase2WorkingDays} days, {phase2HoursPerDay:F2}h/day)");
 
                 currentDate = phase2Start;

@@ -9,7 +9,7 @@ const PHASE_COLORS = {
 
 const MILESTONE_COLORS = {
   CodeComplete: '#4A90E2',
-  CRP: '#FFD700',
+  CRP: '#E67E22',
   UAT: '#F5A623',
   GoLive: '#7ED321'
 };

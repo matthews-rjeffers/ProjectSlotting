@@ -8,6 +8,7 @@ const PHASE_COLORS = {
 };
 
 const MILESTONE_COLORS = {
+  CodeComplete: '#4A90E2',
   CRP: '#FFD700',
   UAT: '#F5A623',
   GoLive: '#7ED321'
@@ -292,12 +293,16 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
             <span>Go-Live</span>
           </div>
           <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.CodeComplete }}></div>
+            <span>Code Complete</span>
+          </div>
+          <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.CRP }}></div>
-            <span>CRP Milestone</span>
+            <span>CRP</span>
           </div>
           <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.GoLive }}></div>
-            <span>Go-Live Milestone</span>
+            <span>Go-Live</span>
           </div>
         </div>
       </div>

@@ -392,6 +392,7 @@ namespace ProjectScheduler.Controllers
                 foreach (var project in projects)
                 {
                     // Get development phase (Development allocations)
+                    // Development bar should end at Code Complete Date, not at CRP
                     var devAllocations = project.ProjectAllocations
                         .Where(pa => pa.SquadId == squad.SquadId && pa.AllocationType == "Development")
                         .ToList();
@@ -400,11 +401,27 @@ namespace ProjectScheduler.Controllers
                     if (devAllocations.Any())
                     {
                         var devStart = devAllocations.Min(a => a.AllocationDate);
-                        var devEnd = devAllocations.Max(a => a.AllocationDate);
+
+                        // End date should be Code Complete Date (or CRP if Code Complete not set)
+                        var codeCompleteDate = project.CodeCompleteDate ?? project.Crpdate;
+                        DateTime devEndDate;
+
+                        if (codeCompleteDate.HasValue)
+                        {
+                            // Use Code Complete Date as the end of development bar
+                            devEndDate = codeCompleteDate.Value;
+                        }
+                        else
+                        {
+                            // Fallback to max allocation date if no dates set
+                            var devEnd = devAllocations.Max(a => a.AllocationDate);
+                            devEndDate = devEnd.ToDateTime(TimeOnly.MinValue);
+                        }
+
                         devPhase = new DevelopmentPhase
                         {
                             StartDate = devStart.ToDateTime(TimeOnly.MinValue),
-                            EndDate = devEnd.ToDateTime(TimeOnly.MinValue)
+                            EndDate = devEndDate
                         };
 
                         // Track overall date range
@@ -416,6 +433,19 @@ namespace ProjectScheduler.Controllers
 
                     // Get milestones
                     var milestones = new List<Milestone>();
+
+                    // Add Code Complete milestone only if it differs from CRP
+                    if (project.CodeCompleteDate.HasValue &&
+                        project.Crpdate.HasValue &&
+                        project.CodeCompleteDate.Value != project.Crpdate.Value)
+                    {
+                        milestones.Add(new Milestone { Type = "CodeComplete", Date = project.CodeCompleteDate.Value });
+                        if (!overallMinDate.HasValue || project.CodeCompleteDate.Value < overallMinDate)
+                            overallMinDate = project.CodeCompleteDate.Value;
+                        if (!overallMaxDate.HasValue || project.CodeCompleteDate.Value > overallMaxDate)
+                            overallMaxDate = project.CodeCompleteDate.Value;
+                    }
+
                     if (project.Crpdate.HasValue)
                     {
                         milestones.Add(new Milestone { Type = "CRP", Date = project.Crpdate.Value });

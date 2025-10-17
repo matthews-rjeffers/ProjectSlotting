@@ -77,11 +77,9 @@ namespace ProjectScheduler.Services
                 };
             }
 
-            // Check if project has a Go-Live date already set
-            bool hasGoLiveDate = project.GoLiveDate.HasValue;
-
-            // Use provided start date or default to tomorrow
-            var searchDate = startDate ?? DateTime.Today.AddDays(1);
+            // NEW LOGIC: Preserve existing dates, use week-based calculations
+            // Use provided start date or project's start date or default to tomorrow
+            var searchDate = startDate ?? project.StartDate ?? DateTime.Today.AddDays(1);
 
             // Determine which algorithm to use
             var algoType = (algorithmType ?? "strict").ToLower();
@@ -89,19 +87,49 @@ namespace ProjectScheduler.Services
             var useDelayed = algoType == "delayed";
             var algorithmName = useGreedy ? "Greedy" : useDelayed ? "Delayed" : "Strict";
 
-            Console.WriteLine($"[SCHEDULE SUGGESTION] Using {algorithmName} algorithm, starting from {searchDate:yyyy-MM-dd}, Go-Live date {(hasGoLiveDate ? "exists: " + project.GoLiveDate!.Value.ToString("yyyy-MM-dd") : "not set")}");
+            Console.WriteLine($"[SCHEDULE SUGGESTION] Using {algorithmName} algorithm");
 
             AllocationSchedule? schedule = null;
             DateTime actualGoLiveDate;
             DateTime actualUatDate;
             DateTime actualCrpDate;
+            DateTime actualCodeCompleteDate;
 
-            if (hasGoLiveDate)
+            // Step 1: Determine dates based on what's already set, using week-based calculations
+            if (project.GoLiveDate.HasValue)
             {
-                // Work BACKWARDS from Go-Live date
-                actualGoLiveDate = project.GoLiveDate!.Value;
-                actualUatDate = AddWorkingDays(actualGoLiveDate, -10); // UAT is 10 working days before Go-Live
-                actualCrpDate = AddWorkingDays(actualUatDate, -3); // CRP is 3 working days before UAT
+                // Go Live is set - work BACKWARDS using week-based offsets
+                actualGoLiveDate = project.GoLiveDate.Value;
+
+                // UAT = Monday of week before Go Live's week
+                if (project.Uatdate.HasValue)
+                {
+                    actualUatDate = project.Uatdate.Value;
+                }
+                else
+                {
+                    actualUatDate = GetMondayOfPreviousWeek(actualGoLiveDate);
+                }
+
+                // CRP = Monday of week before UAT's week
+                if (project.Crpdate.HasValue)
+                {
+                    actualCrpDate = project.Crpdate.Value;
+                }
+                else
+                {
+                    actualCrpDate = GetMondayOfPreviousWeek(actualUatDate);
+                }
+
+                // Code Complete = CRP (if not set)
+                if (project.CodeCompleteDate.HasValue)
+                {
+                    actualCodeCompleteDate = project.CodeCompleteDate.Value;
+                }
+                else
+                {
+                    actualCodeCompleteDate = actualCrpDate;
+                }
 
                 if (useGreedy)
                 {
@@ -136,28 +164,32 @@ namespace ProjectScheduler.Services
             }
             else
             {
-                // No Go-Live date - work FORWARD as before
+                // No Go-Live date - work FORWARD
+                // NEW: Calculate CRP→UAT hours with sliding scale (max 40 hours)
+                var crpToUatHours = Math.Min(bufferedHours * 0.1m, 40m);
+                var startToCodeCompleteHours = bufferedHours - crpToUatHours;
+
                 if (useGreedy)
                 {
-                    // Try flexible/greedy allocation
-                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
+                    // Try flexible/greedy allocation for Start→CodeComplete phase
+                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, startToCodeCompleteHours, dailyCapacity);
                 }
                 else if (useDelayed)
                 {
-                    // For Delayed without Go-Live, calculate estimated UAT date first
-                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
-                    var estimatedUat = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedUat, bufferedHours, dailyCapacity);
+                    // For Delayed without Go-Live, calculate estimated date first
+                    var estimatedDays = (int)Math.Ceiling(startToCodeCompleteHours / dailyCapacity);
+                    var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
+                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedEnd, startToCodeCompleteHours, dailyCapacity);
                 }
                 else
                 {
                     // Try strict (even) allocation - estimate end date first
-                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
+                    var estimatedDays = (int)Math.Ceiling(startToCodeCompleteHours / dailyCapacity);
                     var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity, estimatedEnd);
+                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, startToCodeCompleteHours, dailyCapacity, estimatedEnd);
                 }
 
-                // Check if we found a schedule
+                // Check if we found a schedule for Start→CodeComplete phase
                 if (schedule == null)
                 {
                     return new ScheduleSuggestion
@@ -173,11 +205,17 @@ namespace ProjectScheduler.Services
                     };
                 }
 
-                // Calculate dates based on the found schedule
-                var devCompleteDate = schedule.EndDate;
-                actualCrpDate = AddWorkingDays(devCompleteDate, -3);
-                actualUatDate = devCompleteDate;
-                actualGoLiveDate = AddWorkingDays(actualUatDate, 10);
+                // NEW: Code Complete Date is when Start→CodeComplete phase is done
+                actualCodeCompleteDate = schedule.EndDate;
+
+                // Code Complete = CRP (when not set)
+                actualCrpDate = actualCodeCompleteDate;
+
+                // UAT = Monday of week after CRP's week
+                actualUatDate = GetMondayOfNextWeek(actualCrpDate);
+
+                // Go Live = Monday of week after UAT's week
+                actualGoLiveDate = GetMondayOfNextWeek(actualUatDate);
             }
 
             // Determine the dates from schedule
@@ -187,7 +225,7 @@ namespace ProjectScheduler.Services
             // Calculate working days duration
             var durationDays = GetWorkingDays(finalStartDate, finalEndDate);
 
-            var message = hasGoLiveDate
+            var message = project.GoLiveDate.HasValue
                 ? $"Project scheduled to meet Go-Live {actualGoLiveDate:MMM dd, yyyy} using {algorithmName} Algorithm over {durationDays} days"
                 : (useGreedy
                     ? $"Project can be scheduled starting {finalStartDate:MMM dd, yyyy} (using Greedy Algorithm over {schedule?.DailyAllocations.Count ?? durationDays} days)"
@@ -201,6 +239,7 @@ namespace ProjectScheduler.Services
                 SquadId = squadId,
                 SquadName = squad.SquadName,
                 SuggestedStartDate = finalStartDate,
+                EstimatedCodeCompleteDate = actualCodeCompleteDate,
                 EstimatedCrpDate = actualCrpDate,
                 EstimatedUatDate = actualUatDate,
                 EstimatedGoLiveDate = actualGoLiveDate,
@@ -233,50 +272,93 @@ namespace ProjectScheduler.Services
             {
                 // Update project dates
                 project.StartDate = suggestion.SuggestedStartDate;
+                project.CodeCompleteDate = suggestion.EstimatedCodeCompleteDate;
                 project.Crpdate = suggestion.EstimatedCrpDate;
                 project.Uatdate = suggestion.EstimatedUatDate;
                 project.GoLiveDate = suggestion.EstimatedGoLiveDate;
                 project.BufferPercentage = suggestion.BufferPercentage;
                 project.UpdatedDate = DateTime.UtcNow;
 
-                // Use flexible allocation schedule if available, otherwise fall back to uniform allocation
-                if (suggestion.AllocationSchedule != null && suggestion.AllocationSchedule.Any())
-                {
-                    Console.WriteLine($"[APPLY SCHEDULE] Using flexible allocation with {suggestion.AllocationSchedule.Count} days");
+                // NEW: Create sliding scale split allocations with 40-hour cap
+                // Phase 1: Bulk dev from Start → Code Complete
+                // Phase 2: Polish dev from CRP → UAT (max 40 hours)
 
-                    // Create allocations based on the flexible schedule
-                    foreach (var (date, hours) in suggestion.AllocationSchedule)
+                var crpToUatHours = Math.Min(suggestion.BufferedDevHours * 0.1m, 40m);
+                var startToCodeCompleteHours = suggestion.BufferedDevHours - crpToUatHours;
+
+                Console.WriteLine($"[APPLY SCHEDULE] === Creating Sliding Scale Split Allocations ===");
+                Console.WriteLine($"[APPLY SCHEDULE] Total buffered hours: {suggestion.BufferedDevHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] Start→CodeComplete: {startToCodeCompleteHours}h");
+                Console.WriteLine($"[APPLY SCHEDULE] CRP→UAT (max 40h): {crpToUatHours}h");
+
+                // Phase 1: Bulk dev allocation from Start to Code Complete
+                var phase1Start = suggestion.SuggestedStartDate;
+                var phase1End = suggestion.EstimatedCodeCompleteDate;
+                var phase1WorkingDays = GetWorkingDays(phase1Start, phase1End);
+
+                if (phase1WorkingDays <= 0)
+                {
+                    Console.WriteLine($"[APPLY SCHEDULE] ERROR: No working days from Start to Code Complete");
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var phase1HoursPerDay = startToCodeCompleteHours / phase1WorkingDays;
+                Console.WriteLine($"[APPLY SCHEDULE] Phase 1: {phase1Start:yyyy-MM-dd} to {phase1End:yyyy-MM-dd} ({phase1WorkingDays} days, {phase1HoursPerDay:F2}h/day)");
+
+                var currentDate = phase1Start;
+                while (currentDate <= phase1End)
+                {
+                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
                     {
                         var allocation = new ProjectAllocation
                         {
                             ProjectId = projectId,
                             SquadId = squadId,
-                            AllocationDate = DateOnly.FromDateTime(date),
-                            AllocatedHours = hours,
+                            AllocationDate = DateOnly.FromDateTime(currentDate),
+                            AllocatedHours = phase1HoursPerDay,
                             AllocationType = "Development",
                             CreatedDate = DateTime.UtcNow
                         };
                         _context.ProjectAllocations.Add(allocation);
-                        Console.WriteLine($"[APPLY SCHEDULE] {date:yyyy-MM-dd}: {hours}h");
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 1: {currentDate:yyyy-MM-dd}: {phase1HoursPerDay:F2}h");
                     }
+                    currentDate = currentDate.AddDays(1);
                 }
-                else
-                {
-                    Console.WriteLine($"[APPLY SCHEDULE] Using uniform allocation");
-                    // Fall back to uniform allocation
-                    var allocationSuccess = await _allocationService.AllocateProjectToSquad(
-                        projectId,
-                        squadId,
-                        suggestion.SuggestedStartDate,
-                        suggestion.EstimatedUatDate,
-                        suggestion.BufferedDevHours
-                    );
 
-                    if (!allocationSuccess)
+                // Phase 2: Polish dev allocation from CRP to UAT (max 40 hours)
+                var phase2Start = suggestion.EstimatedCrpDate;
+                var phase2End = suggestion.EstimatedUatDate;
+                var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
+
+                if (phase2WorkingDays <= 0)
+                {
+                    Console.WriteLine($"[APPLY SCHEDULE] ERROR: No working days from CRP to UAT");
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var phase2HoursPerDay = crpToUatHours / phase2WorkingDays;
+                Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {phase2Start:yyyy-MM-dd} to {phase2End:yyyy-MM-dd} ({phase2WorkingDays} days, {phase2HoursPerDay:F2}h/day)");
+
+                currentDate = phase2Start;
+                while (currentDate <= phase2End)
+                {
+                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
                     {
-                        await transaction.RollbackAsync();
-                        return false;
+                        var allocation = new ProjectAllocation
+                        {
+                            ProjectId = projectId,
+                            SquadId = squadId,
+                            AllocationDate = DateOnly.FromDateTime(currentDate),
+                            AllocatedHours = phase2HoursPerDay,
+                            AllocationType = "Development",
+                            CreatedDate = DateTime.UtcNow
+                        };
+                        _context.ProjectAllocations.Add(allocation);
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {currentDate:yyyy-MM-dd}: {phase2HoursPerDay:F2}h");
                     }
+                    currentDate = currentDate.AddDays(1);
                 }
 
                 // Clear existing onsite schedules for this project
@@ -647,6 +729,19 @@ namespace ProjectScheduler.Services
             var dayOfWeek = (int)date.DayOfWeek;
             if (dayOfWeek == 0) dayOfWeek = 7; // Sunday = 7
             return date.AddDays(1 - dayOfWeek);
+        }
+
+        // Calculate date based on week-based offsets
+        private DateTime GetMondayOfPreviousWeek(DateTime date)
+        {
+            var monday = GetMondayOfWeek(date);
+            return monday.AddDays(-7);
+        }
+
+        private DateTime GetMondayOfNextWeek(DateTime date)
+        {
+            var monday = GetMondayOfWeek(date);
+            return monday.AddDays(7);
         }
 
         public async Task<List<AlgorithmComparison>> CompareAlgorithms(

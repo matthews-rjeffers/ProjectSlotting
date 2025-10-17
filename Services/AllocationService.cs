@@ -38,34 +38,42 @@ namespace ProjectScheduler.Services
 
             var allocations = new List<ProjectAllocation>();
 
-            // Phase 1: Dev Hours - Start Date to UAT Date (or CRP if UAT not set)
-            var devEndDate = project.Uatdate ?? crpDate;
-            var devWorkingDays = GetWorkingDays(startDate, devEndDate);
+            // NEW LOGIC: Sliding scale split with 40-hour cap for CRP→UAT
+            // Phase 1: Bulk dev hours from Start → CodeComplete
+            // Phase 2: Polish hours from CRP → UAT (max 40 hours)
 
-            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: DEV HOURS ===");
+            var codeCompleteDate = project.CodeCompleteDate ?? crpDate;
+            var uatDate = project.Uatdate ?? crpDate;
+
+            // Calculate CRP→UAT hours with sliding scale (10% up to 40 hour cap)
+            var crpToUatHours = Math.Min(totalDevHours * 0.1m, 40m);
+            var startToCodeCompleteHours = totalDevHours - crpToUatHours;
+
+            // Phase 1: Allocate Start→CodeComplete hours
+            var phase1WorkingDays = GetWorkingDays(startDate, codeCompleteDate);
+
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: BULK DEV HOURS (Start → CodeComplete) ===");
             Console.WriteLine($"[ALLOCATION DEBUG] Project: {project.ProjectNumber}, Squad: {squadId}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Dev period: {startDate:yyyy-MM-dd} to {devEndDate:yyyy-MM-dd}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Working days: {devWorkingDays.Count}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Total dev hours: {totalDevHours}h");
+            Console.WriteLine($"[ALLOCATION DEBUG] Period: {startDate:yyyy-MM-dd} to {codeCompleteDate:yyyy-MM-dd}");
+            Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase1WorkingDays.Count}");
+            Console.WriteLine($"[ALLOCATION DEBUG] Start→CodeComplete hours: {startToCodeCompleteHours}h");
 
-            if (devWorkingDays.Count == 0)
+            if (phase1WorkingDays.Count == 0)
             {
-                Console.WriteLine($"[ALLOCATION DEBUG] FAILED: No working days");
+                Console.WriteLine($"[ALLOCATION DEBUG] FAILED: No working days in Phase 1");
                 return false;
             }
 
-            var devHoursPerDay = totalDevHours / devWorkingDays.Count;
-            Console.WriteLine($"[ALLOCATION DEBUG] Dev hours per day: {devHoursPerDay}h");
+            var phase1HoursPerDay = startToCodeCompleteHours / phase1WorkingDays.Count;
+            Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 hours per day: {phase1HoursPerDay}h");
 
-            foreach (var day in devWorkingDays)
+            foreach (var day in phase1WorkingDays)
             {
-                // Check if we have capacity
                 var remainingCapacity = await _capacityService.GetSquadRemainingCapacity(squadId, day);
 
-                if (remainingCapacity < devHoursPerDay)
+                if (remainingCapacity < phase1HoursPerDay)
                 {
-                    Console.WriteLine($"[ALLOCATION DEBUG] FAILED: Not enough capacity on {day:yyyy-MM-dd} (need {devHoursPerDay}h, have {remainingCapacity}h)");
-                    // Not enough capacity - rollback
+                    Console.WriteLine($"[ALLOCATION DEBUG] FAILED: Not enough capacity on {day:yyyy-MM-dd} (need {phase1HoursPerDay}h, have {remainingCapacity}h)");
                     return false;
                 }
 
@@ -74,14 +82,65 @@ namespace ProjectScheduler.Services
                     ProjectId = projectId,
                     SquadId = squadId,
                     AllocationDate = DateOnly.FromDateTime(day),
-                    AllocatedHours = devHoursPerDay,
+                    AllocatedHours = phase1HoursPerDay,
                     AllocationType = "Development",
                     CreatedDate = DateTime.UtcNow
                 });
             }
 
-            Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 complete: {devWorkingDays.Count} days allocated");
-            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 2: ONSITE HOURS ===");
+            Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 complete: {phase1WorkingDays.Count} days allocated");
+
+            // Phase 2: Allocate CRP→UAT hours (polish phase, max 40 hours)
+            var phase2WorkingDays = GetWorkingDays(crpDate, uatDate);
+
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 2: POLISH DEV HOURS (CRP → UAT) ===");
+            Console.WriteLine($"[ALLOCATION DEBUG] Period: {crpDate:yyyy-MM-dd} to {uatDate:yyyy-MM-dd}");
+            Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase2WorkingDays.Count}");
+            Console.WriteLine($"[ALLOCATION DEBUG] CRP→UAT hours (max 40): {crpToUatHours}h");
+
+            if (phase2WorkingDays.Count == 0)
+            {
+                Console.WriteLine($"[ALLOCATION DEBUG] FAILED: No working days in Phase 2");
+                return false;
+            }
+
+            var phase2HoursPerDay = crpToUatHours / phase2WorkingDays.Count;
+            Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 hours per day: {phase2HoursPerDay}h");
+
+            foreach (var day in phase2WorkingDays)
+            {
+                var dateOnly = DateOnly.FromDateTime(day);
+
+                // Check capacity including Phase 1 allocations
+                var dailyCapacity = await _capacityService.GetSquadDailyCapacity(squadId);
+                var dbAllocatedHours = await _context.ProjectAllocations
+                    .Where(pa => pa.SquadId == squadId && pa.AllocationDate == dateOnly)
+                    .SumAsync(pa => pa.AllocatedHours);
+                var localAllocatedHours = allocations
+                    .Where(a => a.AllocationDate == dateOnly)
+                    .Sum(a => a.AllocatedHours);
+                var allocatedHours = dbAllocatedHours + localAllocatedHours;
+                var remainingCapacity = dailyCapacity - allocatedHours;
+
+                if (remainingCapacity < phase2HoursPerDay)
+                {
+                    Console.WriteLine($"[ALLOCATION DEBUG] FAILED: Not enough capacity on {day:yyyy-MM-dd} (need {phase2HoursPerDay}h, have {remainingCapacity}h)");
+                    return false;
+                }
+
+                allocations.Add(new ProjectAllocation
+                {
+                    ProjectId = projectId,
+                    SquadId = squadId,
+                    AllocationDate = dateOnly,
+                    AllocatedHours = phase2HoursPerDay,
+                    AllocationType = "Development",
+                    CreatedDate = DateTime.UtcNow
+                });
+            }
+
+            Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 complete: {phase2WorkingDays.Count} days allocated");
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 3: ONSITE HOURS ===");
 
             // Phase 2: Onsite Hours - Based on OnsiteSchedule entries
             // Each entry specifies a week, engineer count, and type (UAT or GoLive)

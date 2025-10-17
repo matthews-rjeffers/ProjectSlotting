@@ -25,6 +25,8 @@ public partial class Project
 
     public DateTime? Uatdate { get; set; }
 
+    public DateTime? CodeCompleteDate { get; set; }
+
     public decimal BufferPercentage { get; set; } = 20;
 
     public string JiraLink { get; set; } = null!;

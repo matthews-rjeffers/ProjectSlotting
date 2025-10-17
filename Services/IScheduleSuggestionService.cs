@@ -36,6 +36,7 @@ namespace ProjectScheduler.Services
         public int SquadId { get; set; }
         public string SquadName { get; set; } = string.Empty;
         public DateTime SuggestedStartDate { get; set; }
+        public DateTime EstimatedCodeCompleteDate { get; set; }
         public DateTime EstimatedCrpDate { get; set; }
         public DateTime EstimatedUatDate { get; set; }
         public DateTime EstimatedGoLiveDate { get; set; }

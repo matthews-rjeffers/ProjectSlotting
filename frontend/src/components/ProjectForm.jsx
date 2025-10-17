@@ -14,6 +14,7 @@ function ProjectForm({ project, onSave, onCancel }) {
     goLiveDate: '',
     crpDate: '',
     uatDate: '',
+    codeCompleteDate: '',
     jiraLink: '',
     startDate: '',
     bufferPercentage: 20
@@ -35,6 +36,7 @@ function ProjectForm({ project, onSave, onCancel }) {
         goLiveDate: project.goLiveDate ? project.goLiveDate.split('T')[0] : '',
         crpDate: project.crpdate ? project.crpdate.split('T')[0] : '',
         uatDate: project.uatdate ? project.uatdate.split('T')[0] : '',
+        codeCompleteDate: project.codeCompleteDate ? project.codeCompleteDate.split('T')[0] : '',
         jiraLink: project.jiraLink || '',
         startDate: project.startDate ? project.startDate.split('T')[0] : '',
         bufferPercentage: project.bufferPercentage || 20
@@ -88,6 +90,7 @@ function ProjectForm({ project, onSave, onCancel }) {
         crpdate: formData.crpDate || null,
         bufferPercentage: parseFloat(formData.bufferPercentage || 20),
         uatdate: formData.uatDate || null,
+        codeCompleteDate: formData.codeCompleteDate || null,
         jiraLink: formData.jiraLink,
         startDate: formData.startDate || null
       };
@@ -215,7 +218,20 @@ function ProjectForm({ project, onSave, onCancel }) {
             </div>
 
             <div className="form-group">
-              <label>CRP Date (Code Complete)</label>
+              <label>Code Complete Date</label>
+              <input
+                type="date"
+                name="codeCompleteDate"
+                value={formData.codeCompleteDate}
+                onChange={handleChange}
+              />
+              <small className="field-hint">Optional - When 90% of dev work completes</small>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>CRP Date</label>
               <input
                 type="date"
                 name="crpDate"
@@ -226,9 +242,7 @@ function ProjectForm({ project, onSave, onCancel }) {
               {errors.crpDate && <span className="error-message">{errors.crpDate}</span>}
               <small className="field-hint">Optional - Can be set using Schedule Suggestion</small>
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>UAT Date</label>
               <input
@@ -238,7 +252,9 @@ function ProjectForm({ project, onSave, onCancel }) {
                 onChange={handleChange}
               />
             </div>
+          </div>
 
+          <div className="form-row">
             <div className="form-group">
               <label>Go-Live Date</label>
               <input
@@ -248,9 +264,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 onChange={handleChange}
               />
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>Buffer Percentage</label>
               <div className="buffer-input-wrapper">

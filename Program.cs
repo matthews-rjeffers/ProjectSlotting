@@ -9,16 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 Console.WriteLine($"Connection String: {connectionString}");
 
-// Register both DbContext classes (there are two with same name in different namespaces)
-builder.Services.AddDbContext<ProjectScheduler.Data.ProjectSchedulerDbContext>(options =>
+// Register DbContext
+builder.Services.AddDbContext<ProjectSchedulerDbContext>(options =>
 {
     Console.WriteLine("Registering ProjectScheduler.Data.ProjectSchedulerDbContext");
-    options.UseSqlServer(connectionString);
-});
-
-builder.Services.AddDbContext<ProjectScheduler.ProjectSchedulerDbContext>(options =>
-{
-    Console.WriteLine("Registering ProjectScheduler.ProjectSchedulerDbContext");
     options.UseSqlServer(connectionString);
 });
 

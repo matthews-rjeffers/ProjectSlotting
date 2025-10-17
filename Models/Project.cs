@@ -25,6 +25,8 @@ public partial class Project
 
     public DateTime? Uatdate { get; set; }
 
+    public DateTime? CodeCompleteDate { get; set; }
+
     public string JiraLink { get; set; } = null!;
 
     public DateTime? StartDate { get; set; }

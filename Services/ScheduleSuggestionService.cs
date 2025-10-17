@@ -77,11 +77,9 @@ namespace ProjectScheduler.Services
                 };
             }
 
-            // Check if project has a Go-Live date already set
-            bool hasGoLiveDate = project.GoLiveDate.HasValue;
-
-            // Use provided start date or default to tomorrow
-            var searchDate = startDate ?? DateTime.Today.AddDays(1);
+            // NEW LOGIC: Preserve existing dates, use week-based calculations
+            // Use provided start date or project's start date or default to tomorrow
+            var searchDate = startDate ?? project.StartDate ?? DateTime.Today.AddDays(1);
 
             // Determine which algorithm to use
             var algoType = (algorithmType ?? "strict").ToLower();
@@ -89,19 +87,49 @@ namespace ProjectScheduler.Services
             var useDelayed = algoType == "delayed";
             var algorithmName = useGreedy ? "Greedy" : useDelayed ? "Delayed" : "Strict";
 
-            Console.WriteLine($"[SCHEDULE SUGGESTION] Using {algorithmName} algorithm, starting from {searchDate:yyyy-MM-dd}, Go-Live date {(hasGoLiveDate ? "exists: " + project.GoLiveDate!.Value.ToString("yyyy-MM-dd") : "not set")}");
+            Console.WriteLine($"[SCHEDULE SUGGESTION] Using {algorithmName} algorithm");
 
             AllocationSchedule? schedule = null;
             DateTime actualGoLiveDate;
             DateTime actualUatDate;
             DateTime actualCrpDate;
+            DateTime actualCodeCompleteDate;
 
-            if (hasGoLiveDate)
+            // Step 1: Determine dates based on what's already set, using week-based calculations
+            if (project.GoLiveDate.HasValue)
             {
-                // Work BACKWARDS from Go-Live date
-                actualGoLiveDate = project.GoLiveDate!.Value;
-                actualUatDate = AddWorkingDays(actualGoLiveDate, -10); // UAT is 10 working days before Go-Live
-                actualCrpDate = AddWorkingDays(actualUatDate, -3); // CRP is 3 working days before UAT
+                // Go Live is set - work BACKWARDS using week-based offsets
+                actualGoLiveDate = project.GoLiveDate.Value;
+
+                // UAT = Monday of week before Go Live's week
+                if (project.Uatdate.HasValue)
+                {
+                    actualUatDate = project.Uatdate.Value;
+                }
+                else
+                {
+                    actualUatDate = GetMondayOfPreviousWeek(actualGoLiveDate);
+                }
+
+                // CRP = Monday of week before UAT's week
+                if (project.Crpdate.HasValue)
+                {
+                    actualCrpDate = project.Crpdate.Value;
+                }
+                else
+                {
+                    actualCrpDate = GetMondayOfPreviousWeek(actualUatDate);
+                }
+
+                // Code Complete = CRP (if not set)
+                if (project.CodeCompleteDate.HasValue)
+                {
+                    actualCodeCompleteDate = project.CodeCompleteDate.Value;
+                }
+                else
+                {
+                    actualCodeCompleteDate = actualCrpDate;
+                }
 
                 if (useGreedy)
                 {
@@ -136,28 +164,31 @@ namespace ProjectScheduler.Services
             }
             else
             {
-                // No Go-Live date - work FORWARD as before
+                // No Go-Live date - work FORWARD
+                // NEW: Allocate 90% of hours to find Code Complete Date
+                var ninetyPercentHours = bufferedHours * 0.9m;
+
                 if (useGreedy)
                 {
-                    // Try flexible/greedy allocation
-                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity);
+                    // Try flexible/greedy allocation for 90%
+                    schedule = await TryFindFlexibleAllocationWindow(squadId, searchDate, ninetyPercentHours, dailyCapacity);
                 }
                 else if (useDelayed)
                 {
-                    // For Delayed without Go-Live, calculate estimated UAT date first
-                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
-                    var estimatedUat = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedUat, bufferedHours, dailyCapacity);
+                    // For Delayed without Go-Live, calculate estimated date first
+                    var estimatedDays = (int)Math.Ceiling(ninetyPercentHours / dailyCapacity);
+                    var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
+                    schedule = await TryFindDelayedAllocationWindow(squadId, estimatedEnd, ninetyPercentHours, dailyCapacity);
                 }
                 else
                 {
                     // Try strict (even) allocation - estimate end date first
-                    var estimatedDays = (int)Math.Ceiling(bufferedHours / dailyCapacity);
+                    var estimatedDays = (int)Math.Ceiling(ninetyPercentHours / dailyCapacity);
                     var estimatedEnd = AddWorkingDays(searchDate, estimatedDays);
-                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, bufferedHours, dailyCapacity, estimatedEnd);
+                    schedule = await TryFindEvenAllocationWindow(squadId, searchDate, ninetyPercentHours, dailyCapacity, estimatedEnd);
                 }
 
-                // Check if we found a schedule
+                // Check if we found a schedule for 90%
                 if (schedule == null)
                 {
                     return new ScheduleSuggestion
@@ -173,11 +204,17 @@ namespace ProjectScheduler.Services
                     };
                 }
 
-                // Calculate dates based on the found schedule
-                var devCompleteDate = schedule.EndDate;
-                actualCrpDate = AddWorkingDays(devCompleteDate, -3);
-                actualUatDate = devCompleteDate;
-                actualGoLiveDate = AddWorkingDays(actualUatDate, 10);
+                // NEW: Code Complete Date is when 90% is done
+                actualCodeCompleteDate = schedule.EndDate;
+
+                // Code Complete = CRP (when not set)
+                actualCrpDate = actualCodeCompleteDate;
+
+                // UAT = Monday of week after CRP's week
+                actualUatDate = GetMondayOfNextWeek(actualCrpDate);
+
+                // Go Live = Monday of week after UAT's week
+                actualGoLiveDate = GetMondayOfNextWeek(actualUatDate);
             }
 
             // Determine the dates from schedule
@@ -187,7 +224,7 @@ namespace ProjectScheduler.Services
             // Calculate working days duration
             var durationDays = GetWorkingDays(finalStartDate, finalEndDate);
 
-            var message = hasGoLiveDate
+            var message = project.GoLiveDate.HasValue
                 ? $"Project scheduled to meet Go-Live {actualGoLiveDate:MMM dd, yyyy} using {algorithmName} Algorithm over {durationDays} days"
                 : (useGreedy
                     ? $"Project can be scheduled starting {finalStartDate:MMM dd, yyyy} (using Greedy Algorithm over {schedule?.DailyAllocations.Count ?? durationDays} days)"
@@ -201,6 +238,7 @@ namespace ProjectScheduler.Services
                 SquadId = squadId,
                 SquadName = squad.SquadName,
                 SuggestedStartDate = finalStartDate,
+                EstimatedCodeCompleteDate = actualCodeCompleteDate,
                 EstimatedCrpDate = actualCrpDate,
                 EstimatedUatDate = actualUatDate,
                 EstimatedGoLiveDate = actualGoLiveDate,
@@ -233,6 +271,7 @@ namespace ProjectScheduler.Services
             {
                 // Update project dates
                 project.StartDate = suggestion.SuggestedStartDate;
+                project.CodeCompleteDate = suggestion.EstimatedCodeCompleteDate;
                 project.Crpdate = suggestion.EstimatedCrpDate;
                 project.Uatdate = suggestion.EstimatedUatDate;
                 project.GoLiveDate = suggestion.EstimatedGoLiveDate;
@@ -647,6 +686,19 @@ namespace ProjectScheduler.Services
             var dayOfWeek = (int)date.DayOfWeek;
             if (dayOfWeek == 0) dayOfWeek = 7; // Sunday = 7
             return date.AddDays(1 - dayOfWeek);
+        }
+
+        // Calculate date based on week-based offsets
+        private DateTime GetMondayOfPreviousWeek(DateTime date)
+        {
+            var monday = GetMondayOfWeek(date);
+            return monday.AddDays(-7);
+        }
+
+        private DateTime GetMondayOfNextWeek(DateTime date)
+        {
+            var monday = GetMondayOfWeek(date);
+            return monday.AddDays(7);
         }
 
         public async Task<List<AlgorithmComparison>> CompareAlgorithms(

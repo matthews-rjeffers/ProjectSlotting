@@ -10,9 +10,9 @@ namespace ProjectScheduler.Controllers
     [ApiController]
     public class OnsiteSchedulesController : ControllerBase
     {
-        private readonly ProjectScheduler.ProjectSchedulerDbContext _context;
+        private readonly ProjectSchedulerDbContext _context;
 
-        public OnsiteSchedulesController(ProjectScheduler.ProjectSchedulerDbContext context)
+        public OnsiteSchedulesController(ProjectSchedulerDbContext context)
         {
             _context = context;
         }

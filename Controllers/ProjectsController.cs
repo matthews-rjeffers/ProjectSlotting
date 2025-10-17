@@ -67,6 +67,13 @@ namespace ProjectScheduler.Controllers
         [HttpPost]
         public async Task<ActionResult<Project>> PostProject(Project project)
         {
+            // Validate date order
+            var validationError = ValidateProjectDates(project);
+            if (validationError != null)
+            {
+                return BadRequest(new { message = validationError });
+            }
+
             project.CreatedDate = DateTime.UtcNow;
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
@@ -81,6 +88,13 @@ namespace ProjectScheduler.Controllers
             if (id != project.ProjectId)
             {
                 return BadRequest();
+            }
+
+            // Validate date order
+            var validationError = ValidateProjectDates(project);
+            if (validationError != null)
+            {
+                return BadRequest(new { message = validationError });
             }
 
             project.UpdatedDate = DateTime.UtcNow;
@@ -492,6 +506,40 @@ namespace ProjectScheduler.Controllers
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.ProjectId == id);
+        }
+
+        private string? ValidateProjectDates(Project project)
+        {
+            // Rule 1: Start < CRP < UAT < Go Live
+            if (project.StartDate.HasValue && project.Crpdate.HasValue && project.StartDate >= project.Crpdate)
+            {
+                return "Start Date must be before CRP Date";
+            }
+
+            if (project.Crpdate.HasValue && project.Uatdate.HasValue && project.Crpdate >= project.Uatdate)
+            {
+                return "CRP Date must be before UAT Date";
+            }
+
+            if (project.Uatdate.HasValue && project.GoLiveDate.HasValue && project.Uatdate >= project.GoLiveDate)
+            {
+                return "UAT Date must be before Go-Live Date";
+            }
+
+            // Rule 2: Start < Code Complete < UAT
+            if (project.StartDate.HasValue && project.CodeCompleteDate.HasValue && project.StartDate >= project.CodeCompleteDate)
+            {
+                return "Start Date must be before Code Complete Date";
+            }
+
+            if (project.CodeCompleteDate.HasValue && project.Uatdate.HasValue && project.CodeCompleteDate >= project.Uatdate)
+            {
+                return "Code Complete Date must be before UAT Date";
+            }
+
+            // Code Complete can be before OR after CRP, so no validation needed between them
+
+            return null; // All validations passed
         }
     }
 

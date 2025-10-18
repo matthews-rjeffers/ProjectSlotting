@@ -274,18 +274,38 @@
 /* Development hours - Blue gradient */
 .progress-fill.development,
 .progress-fill.dev-hours {
-  background: linear-gradient(90deg, #3498db, #2980b9);
+  background: linear-gradient(90deg, #4A90E2, #3a7bc8);
 }
 
-/* UAT onsite hours - Orange/Amber gradient */
+/* UAT onsite hours - Orange gradient */
 .progress-fill.uat,
 .progress-fill.onsite-hours {
-  background: linear-gradient(90deg, #f39c12, #e67e22);
+  background: linear-gradient(90deg, #F5A623, #d68910);
 }
 
-/* GoLive onsite hours - Red/Dark Orange gradient */
+/* GoLive onsite hours - Purple gradient */
 .progress-fill.golive {
+  background: linear-gradient(90deg, #BD10E0, #9a0cb8);
+}
+
+/* Training onsite hours - Green gradient */
+.progress-fill.training {
+  background: linear-gradient(90deg, #27ae60, #229954);
+}
+
+/* PLC Testing onsite hours - Red gradient */
+.progress-fill.plctesting {
   background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+/* Integration Testing onsite hours - Gray gradient */
+.progress-fill.integrationtesting {
+  background: linear-gradient(90deg, #7f8c8d, #6c7a89);
+}
+
+/* Custom onsite hours - Dark/Black gradient */
+.progress-fill.custom {
+  background: linear-gradient(90deg, #34495e, #2c3e50);
 }
 
 /* Rounded corners for stacking */
@@ -321,18 +341,39 @@
   font-weight: 600;
 }
 
-.dev-label {
-  color: #2980b9;
+.dev-label,
+.development-label {
+  color: #3a7bc8;
   font-weight: 700;
 }
 
 .uat-label {
-  color: #e67e22;
+  color: #d68910;
   font-weight: 700;
 }
 
 .golive-label {
+  color: #9a0cb8;
+  font-weight: 700;
+}
+
+.training-label {
+  color: #229954;
+  font-weight: 700;
+}
+
+.plctesting-label {
   color: #c0392b;
+  font-weight: 700;
+}
+
+.integrationtesting-label {
+  color: #6c7a89;
+  font-weight: 700;
+}
+
+.custom-label {
+  color: #2c3e50;
   font-weight: 700;
 }
 

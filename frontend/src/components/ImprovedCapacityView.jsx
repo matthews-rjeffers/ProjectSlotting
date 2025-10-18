@@ -84,9 +84,8 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
       let totalAllocated = 0;
       let projectsThisWeek = new Set();
 
-      let totalDevHours = 0;
-      let totalUATHours = 0;
-      let totalGoLiveHours = 0;
+      // Track hours by allocation type dynamically
+      const hoursByType = new Map();
 
       // Debug: Log week dates
       const weekLabel = `${week.start.toLocaleDateString()} - ${week.end.toLocaleDateString()}`;
@@ -139,16 +138,13 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
             const hours = allocation.allocatedHours || 0;
             dayAllocatedHours += hours;
 
-            // Track Development vs UAT vs GoLive hours
-            const allocType = allocation.allocationType;
+            // Track hours by allocation type dynamically
+            const allocType = allocation.allocationType || 'Development';
+            const currentHours = hoursByType.get(allocType) || 0;
+            hoursByType.set(allocType, currentHours + hours);
+
             if (allocType === 'UAT') {
-              totalUATHours += hours;
-              console.log(`[UAT DEBUG] Date: ${dateKey}, Hours: ${hours}, Total UAT so far: ${totalUATHours}`);
-            } else if (allocType === 'GoLive') {
-              totalGoLiveHours += hours;
-            } else {
-              // Development or legacy types
-              totalDevHours += hours;
+              console.log(`[UAT DEBUG] Date: ${dateKey}, Hours: ${hours}, Total UAT so far: ${hoursByType.get('UAT')}`);
             }
 
             projectsThisWeek.add(parseInt(projectId));
@@ -160,9 +156,16 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
       });
 
       const utilizationPercent = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
-      const devPercent = totalCapacity > 0 ? (totalDevHours / totalCapacity) * 100 : 0;
-      const uatPercent = totalCapacity > 0 ? (totalUATHours / totalCapacity) * 100 : 0;
-      const goLivePercent = totalCapacity > 0 ? (totalGoLiveHours / totalCapacity) * 100 : 0;
+
+      // Convert Map to object with percentages
+      const typeData = {};
+      hoursByType.forEach((hours, type) => {
+        const percent = totalCapacity > 0 ? (hours / totalCapacity) * 100 : 0;
+        typeData[type] = {
+          hours: hours.toFixed(1),
+          percent: percent.toFixed(1)
+        };
+      });
 
       return {
         weekStart: week.start,
@@ -170,12 +173,7 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
         dates: week.dates,
         totalCapacity: totalCapacity.toFixed(1),
         totalAllocated: totalAllocated.toFixed(1),
-        totalDevHours: totalDevHours.toFixed(1),
-        totalUATHours: totalUATHours.toFixed(1),
-        totalGoLiveHours: totalGoLiveHours.toFixed(1),
-        devPercent: devPercent.toFixed(1),
-        uatPercent: uatPercent.toFixed(1),
-        goLivePercent: goLivePercent.toFixed(1),
+        typeData: typeData, // Dynamic allocation type data
         remaining: (totalCapacity - totalAllocated).toFixed(1),
         utilizationPercent: utilizationPercent.toFixed(1),
         status: utilizationPercent > 120 ? 'overloaded' : utilizationPercent > 100 ? 'overallocated' : utilizationPercent > 80 ? 'high' : 'normal',
@@ -403,41 +401,30 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
 
               <div className="capacity-progress">
                 <div className="progress-bar">
-                  {/* Dev hours - Blue */}
-                  {parseFloat(week.devPercent) > 0 && (
-                    <div
-                      className="progress-fill development"
-                      style={{ width: `${Math.min(parseFloat(week.devPercent), 100)}%` }}
-                      title={`Development: ${week.totalDevHours}h`}
-                    />
-                  )}
-                  {/* UAT hours - Orange/Amber */}
-                  {parseFloat(week.uatPercent) > 0 && (
-                    <div
-                      className="progress-fill uat"
-                      style={{ width: `${Math.min(parseFloat(week.uatPercent), 100)}%` }}
-                      title={`UAT: ${week.totalUATHours}h`}
-                    />
-                  )}
-                  {/* GoLive hours - Red */}
-                  {parseFloat(week.goLivePercent) > 0 && (
-                    <div
-                      className="progress-fill golive"
-                      style={{ width: `${Math.min(parseFloat(week.goLivePercent), 100)}%` }}
-                      title={`Go Live: ${week.totalGoLiveHours}h`}
-                    />
-                  )}
+                  {/* Dynamically render progress bars for all allocation types */}
+                  {Object.entries(week.typeData || {}).map(([type, data]) => (
+                    parseFloat(data.percent) > 0 && (
+                      <div
+                        key={type}
+                        className={`progress-fill ${type.toLowerCase()}`}
+                        style={{ width: `${Math.min(parseFloat(data.percent), 100)}%` }}
+                        title={`${type}: ${data.hours}h`}
+                      />
+                    )
+                  ))}
                 </div>
                 <div className="progress-text">
-                  {parseFloat(week.totalDevHours) > 0 && (
-                    <span className="dev-label">Dev: {week.totalDevHours}h</span>
-                  )}
-                  {parseFloat(week.totalUATHours) > 0 && (
-                    <span className="uat-label"> | UAT: {week.totalUATHours}h</span>
-                  )}
-                  {parseFloat(week.totalGoLiveHours) > 0 && (
-                    <span className="golive-label"> | Go-Live: {week.totalGoLiveHours}h</span>
-                  )}
+                  {Object.entries(week.typeData || {}).map(([type, data], index) => {
+                    // Display "PLC" instead of "PLCTesting" for the label
+                    const displayLabel = type === 'PLCTesting' ? 'PLC' : type;
+                    return (
+                      parseFloat(data.hours) > 0 && (
+                        <span key={type} className={`${type.toLowerCase()}-label`}>
+                          {index > 0 ? ' | ' : ''}{displayLabel}: {data.hours}h
+                        </span>
+                      )
+                    );
+                  })}
                   <span> / {week.totalCapacity}h</span>
                 </div>
               </div>

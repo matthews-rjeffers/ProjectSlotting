@@ -9,7 +9,8 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
     weekStartDate: '',
     engineerCount: 1,
     totalHours: 40,
-    onsiteType: 'UAT'
+    onsiteType: 'UAT',
+    notes: ''
   });
 
   useEffect(() => {
@@ -39,10 +40,11 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
         weekStartDate: newSchedule.weekStartDate,
         engineerCount: parseInt(newSchedule.engineerCount),
         totalHours: parseInt(newSchedule.totalHours),
-        onsiteType: newSchedule.onsiteType
+        onsiteType: newSchedule.onsiteType,
+        notes: newSchedule.notes || null
       });
 
-      setNewSchedule({ weekStartDate: '', engineerCount: 1, totalHours: 40, onsiteType: 'UAT' });
+      setNewSchedule({ weekStartDate: '', engineerCount: 1, totalHours: 40, onsiteType: 'UAT', notes: '' });
       loadSchedules();
     } catch (error) {
       console.error('Error creating schedule:', error);
@@ -59,7 +61,8 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
         weekStartDate: schedule.weekStartDate,
         engineerCount: schedule.engineerCount,
         totalHours: schedule.totalHours,
-        onsiteType: schedule.onsiteType
+        onsiteType: schedule.onsiteType,
+        notes: schedule.notes || null
       };
       console.log('Updating schedule with payload:', updatePayload);
       console.log('Original schedule object:', schedule);
@@ -125,6 +128,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                 <th>Engineers</th>
                 <th>Type</th>
                 <th>Total Hours</th>
+                <th>Notes</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -165,6 +169,10 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                         >
                           <option value="UAT">UAT</option>
                           <option value="GoLive">Go Live</option>
+                          <option value="Training">Training</option>
+                          <option value="PLCTesting">PLC Testing</option>
+                          <option value="IntegrationTesting">Integration Testing</option>
+                          <option value="Custom">Custom</option>
                         </select>
                       </td>
                       <td>
@@ -177,6 +185,17 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                             ...editingSchedule,
                             totalHours: parseInt(e.target.value)
                           })}
+                        />
+                      </td>
+                      <td>
+                        <textarea
+                          value={editingSchedule.notes || ''}
+                          onChange={(e) => setEditingSchedule({
+                            ...editingSchedule,
+                            notes: e.target.value
+                          })}
+                          placeholder="Trip details..."
+                          rows="2"
                         />
                       </td>
                       <td>
@@ -198,6 +217,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                         </span>
                       </td>
                       <td className="total-hours">{schedule.totalHours}h</td>
+                      <td className="notes-cell">{schedule.notes || '-'}</td>
                       <td>
                         <button type="button" className="btn-edit-small" onClick={() => setEditingSchedule(schedule)}>
                           Edit
@@ -247,6 +267,10 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
             >
               <option value="UAT">UAT</option>
               <option value="GoLive">Go Live</option>
+              <option value="Training">Training</option>
+              <option value="PLCTesting">PLC Testing</option>
+              <option value="IntegrationTesting">Integration Testing</option>
+              <option value="Custom">Custom</option>
             </select>
           </div>
           <div className="form-field">
@@ -257,6 +281,15 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
               max="200"
               value={newSchedule.totalHours}
               onChange={(e) => setNewSchedule({ ...newSchedule, totalHours: e.target.value })}
+            />
+          </div>
+          <div className="form-field full-width">
+            <label>Notes</label>
+            <textarea
+              value={newSchedule.notes}
+              onChange={(e) => setNewSchedule({ ...newSchedule, notes: e.target.value })}
+              placeholder="Trip details, requirements, etc."
+              rows="3"
             />
           </div>
           <button type="button" className="btn-add" onClick={handleAddSchedule}>

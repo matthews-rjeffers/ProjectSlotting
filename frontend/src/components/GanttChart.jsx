@@ -4,14 +4,22 @@ import './GanttChart.css';
 const PHASE_COLORS = {
   Development: '#4A90E2',
   UAT: '#F5A623',
-  GoLive: '#BD10E0'
+  GoLive: '#BD10E0',
+  Training: '#27ae60',
+  PLCTesting: '#e74c3c',
+  IntegrationTesting: '#7f8c8d',
+  Custom: '#34495e'
 };
 
 const MILESTONE_COLORS = {
   CodeComplete: '#4A90E2',
   CRP: '#E67E22',
   UAT: '#F5A623',
-  GoLive: '#7ED321'
+  GoLive: '#7ED321',
+  Training: '#27ae60',
+  PLCTesting: '#e74c3c',
+  IntegrationTesting: '#7f8c8d',
+  Custom: '#34495e'
 };
 
 function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
@@ -227,16 +235,15 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                       </div>
                     )}
 
-                    {/* Onsite Phases (UAT and Go-Live) */}
+                    {/* Onsite Phases (all types) */}
                     {project.onsitePhases.map((phase, index) => {
-                      // Find the corresponding milestone date for this phase
-                      const milestone = project.milestones.find(m => m.type === phase.type);
-                      if (!milestone) return null;
+                      // The phase starts on weekStartDate and lasts 1 week (Monday-Friday)
+                      const phaseStart = new Date(phase.weekStartDate);
+                      const phaseEnd = new Date(phase.weekStartDate);
+                      phaseEnd.setDate(phaseEnd.getDate() + 4); // 5 days (Monday-Friday)
 
-                      // The phase starts on the milestone date and lasts 1 week
-                      const phaseStart = new Date(milestone.date);
-                      const phaseEnd = new Date(milestone.date);
-                      phaseEnd.setDate(phaseEnd.getDate() + 6); // 1 week duration (7 days - 1)
+                      // Display "PLC" instead of "PLCTesting" for the label
+                      const displayLabel = phase.type === 'PLCTesting' ? 'PLC' : phase.type;
 
                       return (
                         <div
@@ -244,11 +251,11 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                           className={`phase-bar onsite-phase ${phase.type.toLowerCase()}-phase`}
                           style={{
                             ...calculatePosition(phaseStart, phaseEnd),
-                            backgroundColor: PHASE_COLORS[phase.type]
+                            backgroundColor: PHASE_COLORS[phase.type] || '#888'
                           }}
-                          title={`${phase.type}: ${formatDate(milestone.date)} (${phase.engineerCount} eng)`}
+                          title={`${phase.type}: ${formatDate(phase.weekStartDate)} (${phase.engineerCount} eng, ${phase.totalHours}h)`}
                         >
-                          <span className="phase-label">{phase.type}</span>
+                          <span className="phase-label">{displayLabel}</span>
                         </div>
                       );
                     })}
@@ -293,6 +300,22 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
             <span>Go-Live</span>
           </div>
           <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.Training }}></div>
+            <span>Training</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.PLCTesting }}></div>
+            <span>PLC Testing</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.IntegrationTesting }}></div>
+            <span>Integration Testing</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.Custom }}></div>
+            <span>Custom</span>
+          </div>
+          <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.CodeComplete }}></div>
             <span>Code Complete</span>
           </div>
@@ -303,6 +326,22 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
           <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.GoLive }}></div>
             <span>Go-Live</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.Training }}></div>
+            <span>Training</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.PLCTesting }}></div>
+            <span>PLC Testing</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.IntegrationTesting }}></div>
+            <span>Integration Testing</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.Custom }}></div>
+            <span>Custom</span>
           </div>
         </div>
       </div>

@@ -90,6 +90,30 @@ namespace ProjectScheduler.Controllers
                 return BadRequest();
             }
 
+            // Check if project is allocated
+            var isAllocated = await _context.ProjectAllocations
+                .AnyAsync(pa => pa.ProjectId == id);
+
+            if (isAllocated)
+            {
+                // Get the existing project to compare dates
+                var existingProject = await _context.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.ProjectId == id);
+                if (existingProject == null)
+                {
+                    return NotFound();
+                }
+
+                // Prevent changing any dates if project is allocated
+                if (project.StartDate != existingProject.StartDate ||
+                    project.CodeCompleteDate != existingProject.CodeCompleteDate ||
+                    project.Crpdate != existingProject.Crpdate ||
+                    project.Uatdate != existingProject.Uatdate ||
+                    project.GoLiveDate != existingProject.GoLiveDate)
+                {
+                    return BadRequest(new { message = "Cannot modify project dates while project is allocated. Unassign the project first to change dates." });
+                }
+            }
+
             // Validate date order
             var validationError = ValidateProjectDates(project);
             if (validationError != null)
@@ -482,8 +506,16 @@ namespace ProjectScheduler.Controllers
                         })
                         .ToList();
 
+                    // Create milestones for onsite schedules
                     foreach (var phase in onsitePhases)
                     {
+                        // Add milestone for the start of each onsite week
+                        milestones.Add(new Milestone
+                        {
+                            Type = phase.Type,
+                            Date = phase.WeekStartDate
+                        });
+
                         if (!overallMinDate.HasValue || phase.WeekStartDate < overallMinDate)
                             overallMinDate = phase.WeekStartDate;
                         if (!overallMaxDate.HasValue || phase.WeekStartDate > overallMaxDate)

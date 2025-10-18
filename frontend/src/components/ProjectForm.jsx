@@ -106,7 +106,8 @@ function ProjectForm({ project, onSave, onCancel }) {
       }
     } catch (error) {
       console.error('Error saving project:', error);
-      alert('Failed to save project. Please try again.');
+      const errorMessage = error.response?.data?.message || error.response?.data || 'Failed to save project. Please try again.';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -125,7 +126,8 @@ function ProjectForm({ project, onSave, onCancel }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>{project ? 'Edit Project' : 'New Project'}</h2>
         <form onSubmit={handleSubmit}>
-          <div className="form-row">
+          {/* Three-column grid for top fields */}
+          <div className="form-grid-three">
             <div className="form-group">
               <label>Project Number *</label>
               <input
@@ -150,9 +152,7 @@ function ProjectForm({ project, onSave, onCancel }) {
               />
               {errors.customerName && <span className="error-message">{errors.customerName}</span>}
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>Customer City</label>
               <input
@@ -174,9 +174,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 placeholder="2-letter code"
               />
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>Estimated Dev Hours *</label>
               <input
@@ -204,9 +202,7 @@ function ProjectForm({ project, onSave, onCancel }) {
               />
               {errors.estimatedOnsiteHours && <span className="error-message">{errors.estimatedOnsiteHours}</span>}
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>Start Date</label>
               <input
@@ -225,11 +221,9 @@ function ProjectForm({ project, onSave, onCancel }) {
                 value={formData.codeCompleteDate}
                 onChange={handleChange}
               />
-              <small className="field-hint">Optional - When 90% of dev work completes</small>
+              <small className="field-hint">When 90% of dev work completes</small>
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>CRP Date</label>
               <input
@@ -240,7 +234,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 className={errors.crpDate ? 'error' : ''}
               />
               {errors.crpDate && <span className="error-message">{errors.crpDate}</span>}
-              <small className="field-hint">Optional - Can be set using Schedule Suggestion</small>
+              <small className="field-hint">Can be set using Schedule Suggestion</small>
             </div>
 
             <div className="form-group">
@@ -252,9 +246,7 @@ function ProjectForm({ project, onSave, onCancel }) {
                 onChange={handleChange}
               />
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label>Go-Live Date</label>
               <input
@@ -279,10 +271,10 @@ function ProjectForm({ project, onSave, onCancel }) {
                 />
                 <span className="input-suffix">%</span>
               </div>
-              <small className="field-hint">Extra time added for schedule suggestions</small>
+              <small className="field-hint">Extra time for schedule suggestions</small>
             </div>
 
-            <div className="form-group">
+            <div className="form-group form-group-span-2">
               <label>Jira Link</label>
               <input
                 type="url"

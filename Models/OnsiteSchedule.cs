@@ -21,5 +21,7 @@ public partial class OnsiteSchedule
 
     public int TotalHours { get; set; }
 
+    public string? Notes { get; set; }
+
     public virtual Project Project { get; set; } = null!;
 }

@@ -21,5 +21,7 @@ public partial class OnsiteSchedule
 
     public DateTime? UpdatedDate { get; set; }
 
+    public string? Notes { get; set; }
+
     public virtual Project Project { get; set; } = null!;
 }

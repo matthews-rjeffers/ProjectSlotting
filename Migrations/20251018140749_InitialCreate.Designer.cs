@@ -9,11 +9,11 @@ using ProjectScheduler.Data;
 
 #nullable disable
 
-namespace ProjectScheduler.Migrations.ProjectSchedulerDb
+namespace ProjectScheduler.Migrations
 {
     [DbContext(typeof(ProjectSchedulerDbContext))]
-    [Migration("20251018122728_AddNotesFieldToOnsiteSchedule")]
-    partial class AddNotesFieldToOnsiteSchedule
+    [Migration("20251018140749_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,6 +38,9 @@ namespace ProjectScheduler.Migrations.ProjectSchedulerDb
 
                     b.Property<int>("EngineerCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OnsiteType")
                         .IsRequired()

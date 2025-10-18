@@ -8,7 +8,7 @@ using ProjectScheduler.Data;
 
 #nullable disable
 
-namespace ProjectScheduler.Migrations.ProjectSchedulerDb
+namespace ProjectScheduler.Migrations
 {
     [DbContext(typeof(ProjectSchedulerDbContext))]
     partial class ProjectSchedulerDbContextModelSnapshot : ModelSnapshot
@@ -35,6 +35,9 @@ namespace ProjectScheduler.Migrations.ProjectSchedulerDb
 
                     b.Property<int>("EngineerCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OnsiteType")
                         .IsRequired()

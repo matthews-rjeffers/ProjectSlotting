@@ -42,8 +42,8 @@ namespace ProjectScheduler.Services
             // Phase 1: Bulk dev hours from Start → CodeComplete
             // Phase 2: Polish hours from CRP → UAT (max 40 hours)
 
-            // Code Complete defaults to CRP if not set (they CAN be the same day)
-            var codeCompleteDate = project.CodeCompleteDate ?? crpDate;
+            // Code Complete can be explicitly set or defaults to day before CRP
+            var codeCompleteDate = project.CodeCompleteDate;
 
             // UAT should NOT default to CRP (CRP and UAT can NEVER be the same date)
             var uatDate = project.Uatdate;
@@ -54,14 +54,32 @@ namespace ProjectScheduler.Services
                 : 0m;
             var startToCodeCompleteHours = totalDevHours - crpToUatHours;
 
-            // Phase 1: Allocate Start→CodeComplete hours
-            var phase1WorkingDays = GetWorkingDays(startDate, codeCompleteDate);
+            // Phase 1 end date: If Phase 2 exists, end day before CRP; otherwise can go to CRP
+            DateTime phase1EndDate;
+            if (crpToUatHours > 0)
+            {
+                // Phase 2 will allocate starting ON CRP, so Phase 1 must end before CRP
+                phase1EndDate = codeCompleteDate ?? crpDate.AddDays(-1);
+                // But don't go past CRP-1
+                if (phase1EndDate >= crpDate)
+                {
+                    phase1EndDate = crpDate.AddDays(-1);
+                }
+            }
+            else
+            {
+                // No Phase 2, so Phase 1 can include CRP day
+                phase1EndDate = codeCompleteDate ?? crpDate;
+            }
 
-            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: BULK DEV HOURS (Start → CodeComplete) ===");
+            // Phase 1: Allocate Start→Phase1EndDate hours
+            var phase1WorkingDays = GetWorkingDays(startDate, phase1EndDate);
+
+            Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 1: BULK DEV HOURS ===");
             Console.WriteLine($"[ALLOCATION DEBUG] Project: {project.ProjectNumber}, Squad: {squadId}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Period: {startDate:yyyy-MM-dd} to {codeCompleteDate:yyyy-MM-dd}");
+            Console.WriteLine($"[ALLOCATION DEBUG] Period: {startDate:yyyy-MM-dd} to {phase1EndDate:yyyy-MM-dd}");
             Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase1WorkingDays.Count}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Start→CodeComplete hours: {startToCodeCompleteHours}h");
+            Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 hours: {startToCodeCompleteHours}h");
 
             if (phase1WorkingDays.Count == 0)
             {
@@ -107,8 +125,8 @@ namespace ProjectScheduler.Services
             {
                 Console.WriteLine($"[ALLOCATION DEBUG] Period: {crpDate:yyyy-MM-dd} to {uatDate.Value:yyyy-MM-dd}");
 
-                // Start Phase 2 day AFTER CRP to avoid overlap with Phase 1
-                var phase2WorkingDays = GetWorkingDays(crpDate.AddDays(1), uatDate.Value);
+                // Start Phase 2 ON CRP date (polish/feedback work begins on CRP day)
+                var phase2WorkingDays = GetWorkingDays(crpDate, uatDate.Value);
 
                 Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase2WorkingDays.Count}");
                 Console.WriteLine($"[ALLOCATION DEBUG] CRP→UAT hours (max 40): {crpToUatHours}h");

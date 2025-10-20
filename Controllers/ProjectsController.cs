@@ -439,7 +439,7 @@ namespace ProjectScheduler.Controllers
 
                             var phase2Allocations = project.Crpdate.HasValue
                                 ? devAllocations
-                                    .Where(a => a.AllocationDate.ToDateTime(TimeOnly.MinValue) > project.Crpdate.Value)
+                                    .Where(a => a.AllocationDate.ToDateTime(TimeOnly.MinValue) >= project.Crpdate.Value)
                                     .ToList()
                                 : new List<ProjectAllocation>();
 

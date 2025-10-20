@@ -292,8 +292,19 @@ namespace ProjectScheduler.Services
                 Console.WriteLine($"[APPLY SCHEDULE] CRP→UAT (max 40h): {crpToUatHours}h");
 
                 // Phase 1: Bulk dev allocation from Start to Code Complete
+                // If Phase 2 exists, end Phase 1 day before CRP to avoid overlap
                 var phase1Start = suggestion.SuggestedStartDate;
-                var phase1End = suggestion.EstimatedCodeCompleteDate;
+                DateTime phase1End;
+                if (crpToUatHours > 0 && suggestion.EstimatedUatDate > suggestion.EstimatedCrpDate)
+                {
+                    // Phase 2 will allocate starting ON CRP, so Phase 1 must end before CRP
+                    phase1End = suggestion.EstimatedCrpDate.AddDays(-1);
+                }
+                else
+                {
+                    // No Phase 2, so Phase 1 can go to Code Complete
+                    phase1End = suggestion.EstimatedCodeCompleteDate;
+                }
                 var phase1WorkingDays = GetWorkingDays(phase1Start, phase1End);
 
                 if (phase1WorkingDays <= 0)
@@ -338,8 +349,8 @@ namespace ProjectScheduler.Services
                 {
                     Console.WriteLine($"[APPLY SCHEDULE] Period: {suggestion.EstimatedCrpDate:yyyy-MM-dd} to {suggestion.EstimatedUatDate:yyyy-MM-dd}");
 
-                    // Start Phase 2 day AFTER CRP to avoid overlap with Phase 1
-                    var phase2Start = suggestion.EstimatedCrpDate.AddDays(1);
+                    // Start Phase 2 ON CRP date (polish/feedback work begins on CRP day)
+                    var phase2Start = suggestion.EstimatedCrpDate;
                     var phase2End = suggestion.EstimatedUatDate;
                     var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
 

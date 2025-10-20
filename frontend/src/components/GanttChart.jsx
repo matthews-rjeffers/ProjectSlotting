@@ -122,33 +122,65 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
     return columns;
   }, [dateRange, zoomLevel]);
 
-  // Calculate position and width for a phase/milestone
+  // Calculate position and width for a phase/milestone using pixel-based positioning
+  // This ensures alignment with columns regardless of zoom level
   const calculatePosition = (startDate, endDate = null) => {
-    const timelineStart = dateRange.start.getTime();
-    const timelineEnd = dateRange.end.getTime();
-    const totalDuration = timelineEnd - timelineStart;
+    if (timelineColumns.length === 0) return { left: '0px', width: '0px' };
 
-    const start = new Date(startDate).getTime();
-    let left = ((start - timelineStart) / totalDuration) * 100;
+    const startTime = new Date(startDate).getTime();
+    const endTime = endDate ? new Date(endDate).getTime() : startTime;
 
-    if (endDate) {
-      const end = new Date(endDate).getTime();
+    // Calculate pixel position based on column structure
+    let leftPx = 0;
+    let widthPx = 0;
 
-      // Clamp start and end to timeline boundaries
-      const clampedStart = Math.max(start, timelineStart);
-      const clampedEnd = Math.min(end, timelineEnd);
+    if (zoomLevel === 'day') {
+      // Each column is 80px wide (from CSS)
+      const COLUMN_WIDTH_PX = 80;
+      const timelineStart = dateRange.start.getTime();
+      const DAY_MS = 24 * 60 * 60 * 1000;
 
-      // Calculate position and width based on clamped values
-      const clampedLeft = ((clampedStart - timelineStart) / totalDuration) * 100;
-      const clampedWidth = ((clampedEnd - clampedStart) / totalDuration) * 100;
+      const startDays = (startTime - timelineStart) / DAY_MS;
+      const durationDays = endDate ? (endTime - startTime) / DAY_MS : 0;
+
+      leftPx = startDays * COLUMN_WIDTH_PX;
+      widthPx = endDate ? Math.max(durationDays * COLUMN_WIDTH_PX, 2) : 0;
+
+    } else if (zoomLevel === 'week') {
+      // Each column is 80px wide (from CSS)
+      const COLUMN_WIDTH_PX = 80;
+      const timelineStart = dateRange.start.getTime();
+      const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+      const startWeeks = (startTime - timelineStart) / WEEK_MS;
+      const durationWeeks = endDate ? (endTime - startTime) / WEEK_MS : 0;
+
+      leftPx = startWeeks * COLUMN_WIDTH_PX;
+      widthPx = endDate ? Math.max(durationWeeks * COLUMN_WIDTH_PX, 2) : 0;
+
+    } else if (zoomLevel === 'month') {
+      // Months have variable widths based on widthPercent
+      // Calculate total timeline width first
+      const totalTimelineDuration = dateRange.end.getTime() - dateRange.start.getTime();
+
+      // For month view, we need to calculate based on proportional position
+      const startPercent = ((startTime - dateRange.start.getTime()) / totalTimelineDuration) * 100;
+      const widthPercent = endDate ? ((endTime - startTime) / totalTimelineDuration) * 100 : 0;
 
       return {
-        left: `${Math.max(0, clampedLeft)}%`,
-        width: `${Math.max(0.5, clampedWidth)}%`
+        left: `${Math.max(0, startPercent)}%`,
+        width: endDate ? `${Math.max(0.5, widthPercent)}%` : undefined
+      };
+    }
+
+    if (endDate) {
+      return {
+        left: `${leftPx}px`,
+        width: `${widthPx}px`
       };
     } else {
       // Milestone (point in time)
-      return { left: `${Math.max(0, left)}%` };
+      return { left: `${leftPx}px` };
     }
   };
 

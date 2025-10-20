@@ -22,6 +22,7 @@ namespace ProjectScheduler.Models
         public string ProjectNumber { get; set; } = null!;
         public string CustomerName { get; set; } = null!;
         public DevelopmentPhase? DevelopmentPhase { get; set; }
+        public DevelopmentPhase? PolishPhase { get; set; }  // Phase 2: CRP → UAT polish work
         public List<Milestone> Milestones { get; set; } = new();
         public List<OnsitePhase> OnsitePhases { get; set; } = new();
     }

@@ -415,44 +415,81 @@ namespace ProjectScheduler.Controllers
 
                 foreach (var project in projects)
                 {
-                    // Get development phase (Development allocations)
-                    // Development bar should end at Code Complete Date, not at CRP
+                    // Get development phases (Development allocations)
+                    // We need to split into TWO phases:
+                    // Phase 1: Start → Code Complete (bulk dev, ~90%)
+                    // Phase 2: CRP → UAT (polish dev, ~10%, max 40h)
                     var devAllocations = project.ProjectAllocations
                         .Where(pa => pa.SquadId == squad.SquadId && pa.AllocationType == "Development")
                         .ToList();
 
                     DevelopmentPhase? devPhase = null;
+                    DevelopmentPhase? polishPhase = null;
+
                     if (devAllocations.Any())
                     {
-                        var devStart = devAllocations.Min(a => a.AllocationDate);
-
-                        // End date should be Code Complete Date (or CRP if Code Complete not set)
                         var codeCompleteDate = project.CodeCompleteDate ?? project.Crpdate;
-                        DateTime devEndDate;
 
                         if (codeCompleteDate.HasValue)
                         {
-                            // Use Code Complete Date as the end of development bar
-                            devEndDate = codeCompleteDate.Value;
+                            // Split allocations into Phase 1 (before/on Code Complete) and Phase 2 (after CRP)
+                            var phase1Allocations = devAllocations
+                                .Where(a => a.AllocationDate.ToDateTime(TimeOnly.MinValue) <= codeCompleteDate.Value)
+                                .ToList();
+
+                            var phase2Allocations = project.Crpdate.HasValue
+                                ? devAllocations
+                                    .Where(a => a.AllocationDate.ToDateTime(TimeOnly.MinValue) > project.Crpdate.Value)
+                                    .ToList()
+                                : new List<ProjectAllocation>();
+
+                            // Create Phase 1: Start → Code Complete
+                            if (phase1Allocations.Any())
+                            {
+                                devPhase = new DevelopmentPhase
+                                {
+                                    StartDate = phase1Allocations.Min(a => a.AllocationDate).ToDateTime(TimeOnly.MinValue),
+                                    EndDate = codeCompleteDate.Value
+                                };
+
+                                if (!overallMinDate.HasValue || devPhase.StartDate < overallMinDate)
+                                    overallMinDate = devPhase.StartDate;
+                                if (!overallMaxDate.HasValue || devPhase.EndDate > overallMaxDate)
+                                    overallMaxDate = devPhase.EndDate;
+                            }
+
+                            // Create Phase 2: CRP → UAT (polish phase)
+                            if (phase2Allocations.Any() && project.Uatdate.HasValue)
+                            {
+                                polishPhase = new DevelopmentPhase
+                                {
+                                    StartDate = phase2Allocations.Min(a => a.AllocationDate).ToDateTime(TimeOnly.MinValue),
+                                    EndDate = project.Uatdate.Value
+                                };
+
+                                if (!overallMinDate.HasValue || polishPhase.StartDate < overallMinDate)
+                                    overallMinDate = polishPhase.StartDate;
+                                if (!overallMaxDate.HasValue || polishPhase.EndDate > overallMaxDate)
+                                    overallMaxDate = polishPhase.EndDate;
+                            }
                         }
                         else
                         {
-                            // Fallback to max allocation date if no dates set
+                            // Fallback: No dates set, show all dev as one phase
+                            var devStart = devAllocations.Min(a => a.AllocationDate);
                             var devEnd = devAllocations.Max(a => a.AllocationDate);
-                            devEndDate = devEnd.ToDateTime(TimeOnly.MinValue);
+
+                            devPhase = new DevelopmentPhase
+                            {
+                                StartDate = devStart.ToDateTime(TimeOnly.MinValue),
+                                EndDate = devEnd.ToDateTime(TimeOnly.MinValue)
+                            };
+
+                            if (!overallMinDate.HasValue || devPhase.StartDate < overallMinDate)
+                                overallMinDate = devPhase.StartDate;
+                            if (!overallMaxDate.HasValue || devPhase.EndDate > overallMaxDate)
+                                overallMaxDate = devPhase.EndDate;
                         }
-
-                        devPhase = new DevelopmentPhase
-                        {
-                            StartDate = devStart.ToDateTime(TimeOnly.MinValue),
-                            EndDate = devEndDate
-                        };
-
-                        // Track overall date range
-                        if (!overallMinDate.HasValue || devPhase.StartDate < overallMinDate)
-                            overallMinDate = devPhase.StartDate;
-                        if (!overallMaxDate.HasValue || devPhase.EndDate > overallMaxDate)
-                            overallMaxDate = devPhase.EndDate;
                     }
 
                     // Get milestones
@@ -523,7 +560,7 @@ namespace ProjectScheduler.Controllers
                     }
 
                     // Only include project if it has data in the visible range
-                    if (devPhase != null || milestones.Any() || onsitePhases.Any())
+                    if (devPhase != null || polishPhase != null || milestones.Any() || onsitePhases.Any())
                     {
                         ganttProjects.Add(new GanttProject
                         {
@@ -531,6 +568,7 @@ namespace ProjectScheduler.Controllers
                             ProjectNumber = project.ProjectNumber,
                             CustomerName = project.CustomerName,
                             DevelopmentPhase = devPhase,
+                            PolishPhase = polishPhase,
                             Milestones = milestones,
                             OnsitePhases = onsitePhases
                         });

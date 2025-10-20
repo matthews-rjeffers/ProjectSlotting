@@ -218,7 +218,7 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                     onClick={() => onProjectClick(project.projectId)}
                     title="Click to edit project"
                   >
-                    {/* Development Phase */}
+                    {/* Development Phase 1: Start → Code Complete */}
                     {project.developmentPhase && (
                       <div
                         className="phase-bar development-phase"
@@ -232,6 +232,24 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                         title={`Development: ${formatDate(project.developmentPhase.startDate)} - ${formatDate(project.developmentPhase.endDate)}`}
                       >
                         <span className="phase-label">Dev</span>
+                      </div>
+                    )}
+
+                    {/* Development Phase 2: CRP → UAT (Polish) */}
+                    {project.polishPhase && (
+                      <div
+                        className="phase-bar polish-phase"
+                        style={{
+                          ...calculatePosition(
+                            project.polishPhase.startDate,
+                            project.polishPhase.endDate
+                          ),
+                          backgroundColor: PHASE_COLORS.Development,
+                          opacity: 0.7  // Slightly transparent to distinguish from Phase 1
+                        }}
+                        title={`Polish Development: ${formatDate(project.polishPhase.startDate)} - ${formatDate(project.polishPhase.endDate)}`}
+                      >
+                        <span className="phase-label">Polish</span>
                       </div>
                     )}
 

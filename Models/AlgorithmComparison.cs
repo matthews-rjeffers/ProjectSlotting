@@ -10,6 +10,7 @@ public class AlgorithmComparison
     public bool CanAllocate { get; set; }
     public string? Message { get; set; }
     public DateTime? SuggestedStartDate { get; set; }
+    public DateTime? EstimatedCodeCompleteDate { get; set; }
     public DateTime? EstimatedCrpDate { get; set; }
     public DateTime? EstimatedUatDate { get; set; }
     public DateTime? EstimatedGoLiveDate { get; set; }

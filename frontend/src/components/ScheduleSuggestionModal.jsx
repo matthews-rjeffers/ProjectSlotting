@@ -246,6 +246,10 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                             <span className="date-value">{formatDate(algo.suggestedStartDate)}</span>
                           </div>
                           <div className="date-item">
+                            <span className="date-label">Code Complete:</span>
+                            <span className="date-value">{formatDate(algo.estimatedCodeCompleteDate)}</span>
+                          </div>
+                          <div className="date-item">
                             <span className="date-label">CRP:</span>
                             <span className="date-value">{formatDate(algo.estimatedCrpDate)}</span>
                           </div>

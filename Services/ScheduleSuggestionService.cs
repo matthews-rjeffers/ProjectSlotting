@@ -327,38 +327,56 @@ namespace ProjectScheduler.Services
                 }
 
                 // Phase 2: Polish dev allocation from CRP to UAT (max 40 hours)
-                var phase2Start = suggestion.EstimatedCrpDate;
-                var phase2End = suggestion.EstimatedUatDate;
-                var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
+                // Only run if UAT exists AND is AFTER CRP (CRP and UAT can never be same date)
+                Console.WriteLine($"[APPLY SCHEDULE] === PHASE 2: POLISH DEV HOURS (CRP → UAT) ===");
 
-                if (phase2WorkingDays <= 0)
+                if (suggestion.EstimatedUatDate <= suggestion.EstimatedCrpDate)
                 {
-                    Console.WriteLine($"[APPLY SCHEDULE] ERROR: No working days from CRP to UAT");
-                    await transaction.RollbackAsync();
-                    return false;
+                    Console.WriteLine($"[APPLY SCHEDULE] SKIPPED: UAT ({suggestion.EstimatedUatDate:yyyy-MM-dd}) is not after CRP ({suggestion.EstimatedCrpDate:yyyy-MM-dd})");
                 }
-
-                var phase2HoursPerDay = crpToUatHours / phase2WorkingDays;
-                Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {phase2Start:yyyy-MM-dd} to {phase2End:yyyy-MM-dd} ({phase2WorkingDays} days, {phase2HoursPerDay:F2}h/day)");
-
-                currentDate = phase2Start;
-                while (currentDate <= phase2End)
+                else
                 {
-                    if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
+                    Console.WriteLine($"[APPLY SCHEDULE] Period: {suggestion.EstimatedCrpDate:yyyy-MM-dd} to {suggestion.EstimatedUatDate:yyyy-MM-dd}");
+
+                    // Start Phase 2 day AFTER CRP to avoid overlap with Phase 1
+                    var phase2Start = suggestion.EstimatedCrpDate.AddDays(1);
+                    var phase2End = suggestion.EstimatedUatDate;
+                    var phase2WorkingDays = GetWorkingDays(phase2Start, phase2End);
+
+                    Console.WriteLine($"[APPLY SCHEDULE] Working days: {phase2WorkingDays}");
+                    Console.WriteLine($"[APPLY SCHEDULE] CRP→UAT hours (max 40): {crpToUatHours}h");
+
+                    if (phase2WorkingDays <= 0)
                     {
-                        var allocation = new ProjectAllocation
-                        {
-                            ProjectId = projectId,
-                            SquadId = squadId,
-                            AllocationDate = DateOnly.FromDateTime(currentDate),
-                            AllocatedHours = phase2HoursPerDay,
-                            AllocationType = "Development",
-                            CreatedDate = DateTime.UtcNow
-                        };
-                        _context.ProjectAllocations.Add(allocation);
-                        Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {currentDate:yyyy-MM-dd}: {phase2HoursPerDay:F2}h");
+                        Console.WriteLine($"[APPLY SCHEDULE] No working days between CRP and UAT, skipping Phase 2");
                     }
-                    currentDate = currentDate.AddDays(1);
+                    else
+                    {
+                        var phase2HoursPerDay = crpToUatHours / phase2WorkingDays;
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 2 hours per day: {phase2HoursPerDay:F2}h");
+
+                        currentDate = phase2Start;
+                        while (currentDate <= phase2End)
+                        {
+                            if (currentDate.DayOfWeek != DayOfWeek.Saturday && currentDate.DayOfWeek != DayOfWeek.Sunday)
+                            {
+                                var allocation = new ProjectAllocation
+                                {
+                                    ProjectId = projectId,
+                                    SquadId = squadId,
+                                    AllocationDate = DateOnly.FromDateTime(currentDate),
+                                    AllocatedHours = phase2HoursPerDay,
+                                    AllocationType = "Development",
+                                    CreatedDate = DateTime.UtcNow
+                                };
+                                _context.ProjectAllocations.Add(allocation);
+                                Console.WriteLine($"[APPLY SCHEDULE] Phase 2: {currentDate:yyyy-MM-dd}: {phase2HoursPerDay:F2}h");
+                            }
+                            currentDate = currentDate.AddDays(1);
+                        }
+
+                        Console.WriteLine($"[APPLY SCHEDULE] Phase 2 complete: {phase2WorkingDays} days allocated");
+                    }
                 }
 
                 // Clear existing onsite schedules for this project
@@ -769,6 +787,7 @@ namespace ProjectScheduler.Services
                     CanAllocate = suggestion.CanAllocate,
                     Message = suggestion.Message,
                     SuggestedStartDate = suggestion.CanAllocate ? suggestion.SuggestedStartDate : null,
+                    EstimatedCodeCompleteDate = suggestion.CanAllocate ? suggestion.EstimatedCodeCompleteDate : null,
                     EstimatedCrpDate = suggestion.CanAllocate ? suggestion.EstimatedCrpDate : null,
                     EstimatedUatDate = suggestion.CanAllocate ? suggestion.EstimatedUatDate : null,
                     EstimatedGoLiveDate = suggestion.CanAllocate ? suggestion.EstimatedGoLiveDate : null,

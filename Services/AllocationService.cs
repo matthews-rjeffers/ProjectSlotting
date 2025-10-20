@@ -42,11 +42,16 @@ namespace ProjectScheduler.Services
             // Phase 1: Bulk dev hours from Start → CodeComplete
             // Phase 2: Polish hours from CRP → UAT (max 40 hours)
 
+            // Code Complete defaults to CRP if not set (they CAN be the same day)
             var codeCompleteDate = project.CodeCompleteDate ?? crpDate;
-            var uatDate = project.Uatdate ?? crpDate;
 
-            // Calculate CRP→UAT hours with sliding scale (10% up to 40 hour cap)
-            var crpToUatHours = Math.Min(totalDevHours * 0.1m, 40m);
+            // UAT should NOT default to CRP (CRP and UAT can NEVER be the same date)
+            var uatDate = project.Uatdate;
+
+            // Calculate CRP→UAT hours only if UAT exists AND is after CRP
+            var crpToUatHours = (uatDate.HasValue && uatDate.Value > crpDate)
+                ? Math.Min(totalDevHours * 0.1m, 40m)
+                : 0m;
             var startToCodeCompleteHours = totalDevHours - crpToUatHours;
 
             // Phase 1: Allocate Start→CodeComplete hours
@@ -91,55 +96,68 @@ namespace ProjectScheduler.Services
             Console.WriteLine($"[ALLOCATION DEBUG] Phase 1 complete: {phase1WorkingDays.Count} days allocated");
 
             // Phase 2: Allocate CRP→UAT hours (polish phase, max 40 hours)
-            var phase2WorkingDays = GetWorkingDays(crpDate, uatDate);
-
+            // Only run if UAT exists AND is AFTER CRP (CRP and UAT can never be same date)
             Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 2: POLISH DEV HOURS (CRP → UAT) ===");
-            Console.WriteLine($"[ALLOCATION DEBUG] Period: {crpDate:yyyy-MM-dd} to {uatDate:yyyy-MM-dd}");
-            Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase2WorkingDays.Count}");
-            Console.WriteLine($"[ALLOCATION DEBUG] CRP→UAT hours (max 40): {crpToUatHours}h");
 
-            if (phase2WorkingDays.Count == 0)
+            if (!uatDate.HasValue || uatDate.Value <= crpDate)
             {
-                Console.WriteLine($"[ALLOCATION DEBUG] FAILED: No working days in Phase 2");
-                return false;
+                Console.WriteLine($"[ALLOCATION DEBUG] SKIPPED: UAT not set or not after CRP date");
             }
-
-            var phase2HoursPerDay = crpToUatHours / phase2WorkingDays.Count;
-            Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 hours per day: {phase2HoursPerDay}h");
-
-            foreach (var day in phase2WorkingDays)
+            else
             {
-                var dateOnly = DateOnly.FromDateTime(day);
+                Console.WriteLine($"[ALLOCATION DEBUG] Period: {crpDate:yyyy-MM-dd} to {uatDate.Value:yyyy-MM-dd}");
 
-                // Check capacity including Phase 1 allocations
-                var dailyCapacity = await _capacityService.GetSquadDailyCapacity(squadId);
-                var dbAllocatedHours = await _context.ProjectAllocations
-                    .Where(pa => pa.SquadId == squadId && pa.AllocationDate == dateOnly)
-                    .SumAsync(pa => pa.AllocatedHours);
-                var localAllocatedHours = allocations
-                    .Where(a => a.AllocationDate == dateOnly)
-                    .Sum(a => a.AllocatedHours);
-                var allocatedHours = dbAllocatedHours + localAllocatedHours;
-                var remainingCapacity = dailyCapacity - allocatedHours;
+                // Start Phase 2 day AFTER CRP to avoid overlap with Phase 1
+                var phase2WorkingDays = GetWorkingDays(crpDate.AddDays(1), uatDate.Value);
 
-                if (remainingCapacity < phase2HoursPerDay)
+                Console.WriteLine($"[ALLOCATION DEBUG] Working days: {phase2WorkingDays.Count}");
+                Console.WriteLine($"[ALLOCATION DEBUG] CRP→UAT hours (max 40): {crpToUatHours}h");
+
+                if (phase2WorkingDays.Count == 0)
                 {
-                    Console.WriteLine($"[ALLOCATION DEBUG] FAILED: Not enough capacity on {day:yyyy-MM-dd} (need {phase2HoursPerDay}h, have {remainingCapacity}h)");
-                    return false;
+                    Console.WriteLine($"[ALLOCATION DEBUG] No working days between CRP and UAT, skipping Phase 2");
                 }
-
-                allocations.Add(new ProjectAllocation
+                else
                 {
-                    ProjectId = projectId,
-                    SquadId = squadId,
-                    AllocationDate = dateOnly,
-                    AllocatedHours = phase2HoursPerDay,
-                    AllocationType = "Development",
-                    CreatedDate = DateTime.UtcNow
-                });
+                    var phase2HoursPerDay = crpToUatHours / phase2WorkingDays.Count;
+                    Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 hours per day: {phase2HoursPerDay}h");
+
+                    foreach (var day in phase2WorkingDays)
+                    {
+                        var dateOnly = DateOnly.FromDateTime(day);
+
+                        // Check capacity including Phase 1 allocations
+                        var dailyCapacity = await _capacityService.GetSquadDailyCapacity(squadId);
+                        var dbAllocatedHours = await _context.ProjectAllocations
+                            .Where(pa => pa.SquadId == squadId && pa.AllocationDate == dateOnly)
+                            .SumAsync(pa => pa.AllocatedHours);
+                        var localAllocatedHours = allocations
+                            .Where(a => a.AllocationDate == dateOnly)
+                            .Sum(a => a.AllocatedHours);
+                        var allocatedHours = dbAllocatedHours + localAllocatedHours;
+                        var remainingCapacity = dailyCapacity - allocatedHours;
+
+                        if (remainingCapacity < phase2HoursPerDay)
+                        {
+                            Console.WriteLine($"[ALLOCATION DEBUG] FAILED: Not enough capacity on {day:yyyy-MM-dd} (need {phase2HoursPerDay}h, have {remainingCapacity}h)");
+                            return false;
+                        }
+
+                        allocations.Add(new ProjectAllocation
+                        {
+                            ProjectId = projectId,
+                            SquadId = squadId,
+                            AllocationDate = dateOnly,
+                            AllocatedHours = phase2HoursPerDay,
+                            AllocationType = "Development",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+
+                    Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 complete: {phase2WorkingDays.Count} days allocated");
+                }
             }
 
-            Console.WriteLine($"[ALLOCATION DEBUG] Phase 2 complete: {phase2WorkingDays.Count} days allocated");
             Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 3: ONSITE HOURS ===");
 
             // Phase 2: Onsite Hours - Based on OnsiteSchedule entries

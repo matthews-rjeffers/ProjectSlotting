@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getProjects, getSquads, getProjectAllocations, previewProjectAllocation, allocateProject, deleteProject } from '../api';
+import { getProjects, getSquads, getProjectAllocations, previewProjectAllocation, allocateProject, deleteProject, unassignProject } from '../api';
 import AllocationPreviewModal from '../components/AllocationPreviewModal';
 import ScheduleSuggestionModal from '../components/ScheduleSuggestionModal';
 import ProjectForm from '../components/ProjectForm';
@@ -122,6 +122,20 @@ const ProjectsPage = () => {
     }
   };
 
+  const handleUnassignProject = async (projectId, projectName) => {
+    if (!window.confirm(`Are you sure you want to unassign project "${projectName}" from its squad? This will remove all allocations but preserve onsite schedules.`)) {
+      return;
+    }
+
+    try {
+      await unassignProject(projectId);
+      loadData(); // Refresh to show unassigned status
+    } catch (error) {
+      console.error('Error unassigning project:', error);
+      alert('Failed to unassign project. Please try again.');
+    }
+  };
+
   const handleScheduleSuggestionApplied = () => {
     setScheduleSuggestionProject(null);
     loadData(); // Refresh to show updated project dates and allocations
@@ -200,7 +214,15 @@ const ProjectsPage = () => {
                     >
                       Delete
                     </button>
-                    {!projectAllocations[project.projectId] && (
+                    {projectAllocations[project.projectId] ? (
+                      <button
+                        className="btn-unassign"
+                        onClick={() => handleUnassignProject(project.projectId, getProjectDisplayName(project))}
+                        title="Unassign from Squad"
+                      >
+                        Unassign
+                      </button>
+                    ) : (
                       project.crpdate ? (
                         <select
                           className="squad-select"
@@ -257,6 +279,7 @@ const ProjectsPage = () => {
       {editingProject && (
         <ProjectForm
           project={editingProject}
+          isAssigned={!!projectAllocations[editingProject?.projectId]}
           onSave={handleSaveProject}
           onCancel={handleCancelEdit}
         />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { createProject, updateProject } from '../api';
+import { createProject, updateProject, unassignProject } from '../api';
 import OnsiteScheduleManager from './OnsiteScheduleManager';
 import './ProjectForm.css';
 
-function ProjectForm({ project, onSave, onCancel }) {
+function ProjectForm({ project, isAssigned, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     projectNumber: '',
     customerName: '',
@@ -118,6 +118,21 @@ function ProjectForm({ project, onSave, onCancel }) {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const handleUnassign = async () => {
+    if (!window.confirm(`Are you sure you want to unassign this project from its squad? This will remove all allocations but preserve onsite schedules.`)) {
+      return;
+    }
+
+    try {
+      await unassignProject(project.projectId);
+      alert('Project unassigned successfully');
+      onSave(); // Refresh parent data and close modal
+    } catch (error) {
+      console.error('Error unassigning project:', error);
+      alert('Failed to unassign project. Please try again.');
     }
   };
 
@@ -295,6 +310,16 @@ function ProjectForm({ project, onSave, onCancel }) {
           )}
 
           <div className="form-actions">
+            {isAssigned && project?.projectId && (
+              <button
+                type="button"
+                onClick={handleUnassign}
+                className="btn btn-unassign"
+                disabled={saving}
+              >
+                Unassign from Squad
+              </button>
+            )}
             <button
               type="button"
               onClick={createdProject ? onSave : onCancel}

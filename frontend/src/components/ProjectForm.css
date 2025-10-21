@@ -80,3 +80,20 @@
     grid-column: span 1;
   }
 }
+
+.btn-unassign {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  background: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn-unassign:hover {
+  background: #e67e22;
+}

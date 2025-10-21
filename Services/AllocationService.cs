@@ -178,22 +178,23 @@ namespace ProjectScheduler.Services
 
             Console.WriteLine($"[ALLOCATION DEBUG] === PHASE 3: ONSITE HOURS ===");
 
-            // Phase 2: Onsite Hours - Based on OnsiteSchedule entries
-            // Each entry specifies a week, engineer count, and type (UAT or GoLive)
+            // Phase 3: Onsite Hours - Based on OnsiteSchedule entries
+            // Each entry specifies a date range, engineer count, and type
+            // Onsite work includes ALL days (even weekends) for UAT, GoLive, Hypercare, etc.
             foreach (var schedule in project.OnsiteSchedules)
             {
-                var weekStart = schedule.WeekStartDate;
-                var weekEnd = weekStart.AddDays(4); // Monday to Friday
-                var workingDays = GetWorkingDays(weekStart, weekEnd);
+                var onsiteStartDate = schedule.StartDate;
+                var onsiteEndDate = schedule.EndDate;
+                var allDays = GetAllDays(onsiteStartDate, onsiteEndDate); // Include weekends for onsite work
 
                 // Use TotalHours from the schedule (user-defined)
-                var hoursPerDay = (decimal)schedule.TotalHours / workingDays.Count;
+                var hoursPerDay = (decimal)schedule.TotalHours / allDays.Count;
 
-                Console.WriteLine($"[ALLOCATION DEBUG] Processing onsite schedule for week {weekStart:yyyy-MM-dd}");
+                Console.WriteLine($"[ALLOCATION DEBUG] Processing onsite schedule from {onsiteStartDate:yyyy-MM-dd} to {onsiteEndDate:yyyy-MM-dd}");
                 Console.WriteLine($"[ALLOCATION DEBUG] Engineer count: {schedule.EngineerCount}, Total hours: {schedule.TotalHours}h, Type: {schedule.OnsiteType}");
-                Console.WriteLine($"[ALLOCATION DEBUG] Working days: {workingDays.Count}, Hours per day: {hoursPerDay}h");
+                Console.WriteLine($"[ALLOCATION DEBUG] Total days (incl. weekends): {allDays.Count}, Hours per day: {hoursPerDay}h");
 
-                foreach (var day in workingDays)
+                foreach (var day in allDays)
                 {
                     var dateOnly = DateOnly.FromDateTime(day);
 
@@ -345,12 +346,12 @@ namespace ProjectScheduler.Services
             var startDate = project.StartDate.Value;
             var endDate = project.GoLiveDate ?? devEndDate;
 
-            // Get all onsite schedules to find the latest week
+            // Get all onsite schedules to find the latest date
             if (project.OnsiteSchedules.Any())
             {
-                var latestOnsiteWeek = project.OnsiteSchedules.Max(s => s.WeekStartDate.AddDays(4));
-                if (latestOnsiteWeek > endDate)
-                    endDate = latestOnsiteWeek;
+                var latestOnsiteDate = project.OnsiteSchedules.Max(s => s.EndDate);
+                if (latestOnsiteDate > endDate)
+                    endDate = latestOnsiteDate;
             }
 
             // Get current allocations for the date range
@@ -401,22 +402,25 @@ namespace ProjectScheduler.Services
             // Phase 2: Add onsite schedule previews
             foreach (var schedule in project.OnsiteSchedules)
             {
-                var weekStart = schedule.WeekStartDate;
-                if (weekStart.DayOfWeek != DayOfWeek.Monday)
+                var scheduleStartDate = schedule.StartDate;
+                var scheduleEndDate = schedule.EndDate;
+                var allDays = GetAllDays(scheduleStartDate, scheduleEndDate); // Include ALL days (even weekends)
+                var totalDays = allDays.Count;
+
+                if (totalDays == 0) continue;
+
+                var hoursPerDay = (decimal)schedule.TotalHours / totalDays;
+
+                // Distribute hours across all days (including weekends) that this schedule spans
+                foreach (var day in allDays)
                 {
-                    // Adjust to Monday
-                    var dayOfWeek = (int)weekStart.DayOfWeek;
-                    weekStart = weekStart.AddDays(dayOfWeek == 0 ? -6 : -(dayOfWeek - 1));
+                    var dayWeekStart = day.AddDays(-(int)day.DayOfWeek + (int)DayOfWeek.Monday);
+
+                    if (weeklyData.ContainsKey(dayWeekStart))
+                    {
+                        weeklyData[dayWeekStart].PreviewOnsiteHours += hoursPerDay;
+                    }
                 }
-
-                if (!weeklyData.ContainsKey(weekStart))
-                    continue; // Week not in range
-
-                var weekEnd = weekStart.AddDays(4);
-                var workingDays = GetWorkingDays(weekStart, weekEnd);
-                var hoursPerDay = (decimal)schedule.TotalHours / workingDays.Count;
-
-                weeklyData[weekStart].PreviewOnsiteHours += schedule.TotalHours;
             }
 
             // Calculate utilization and check capacity
@@ -455,6 +459,18 @@ namespace ProjectScheduler.Services
             }
 
             return workingDays;
+        }
+
+        private List<DateTime> GetAllDays(DateTime startDate, DateTime endDate)
+        {
+            var allDays = new List<DateTime>();
+
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                allDays.Add(date);
+            }
+
+            return allDays;
         }
     }
 }

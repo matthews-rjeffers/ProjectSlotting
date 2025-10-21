@@ -9,7 +9,9 @@ public partial class OnsiteSchedule
 
     public int ProjectId { get; set; }
 
-    public DateTime WeekStartDate { get; set; }
+    public DateTime StartDate { get; set; }
+
+    public DateTime EndDate { get; set; }
 
     public int EngineerCount { get; set; }
 

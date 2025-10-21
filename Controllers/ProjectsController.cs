@@ -537,7 +537,8 @@ namespace ProjectScheduler.Controllers
                         .Select(os => new OnsitePhase
                         {
                             Type = os.OnsiteType,
-                            WeekStartDate = os.WeekStartDate,
+                            StartDate = os.StartDate,
+                            EndDate = os.EndDate,
                             EngineerCount = os.EngineerCount,
                             TotalHours = os.TotalHours
                         })
@@ -546,17 +547,17 @@ namespace ProjectScheduler.Controllers
                     // Create milestones for onsite schedules
                     foreach (var phase in onsitePhases)
                     {
-                        // Add milestone for the start of each onsite week
+                        // Add milestone for the start of each onsite period
                         milestones.Add(new Milestone
                         {
                             Type = phase.Type,
-                            Date = phase.WeekStartDate
+                            Date = phase.StartDate
                         });
 
-                        if (!overallMinDate.HasValue || phase.WeekStartDate < overallMinDate)
-                            overallMinDate = phase.WeekStartDate;
-                        if (!overallMaxDate.HasValue || phase.WeekStartDate > overallMaxDate)
-                            overallMaxDate = phase.WeekStartDate;
+                        if (!overallMinDate.HasValue || phase.StartDate < overallMinDate)
+                            overallMinDate = phase.StartDate;
+                        if (!overallMaxDate.HasValue || phase.EndDate > overallMaxDate)
+                            overallMaxDate = phase.EndDate;
                     }
 
                     // Only include project if it has data in the visible range

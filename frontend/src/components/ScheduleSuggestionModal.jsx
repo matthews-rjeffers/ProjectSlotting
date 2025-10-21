@@ -447,12 +447,8 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
                     </div>
                   </div>
 
-                  <div className="onsite-preview">
-                    <h5>Onsite Schedule (Will be created automatically)</h5>
-                    <ul>
-                      <li>UAT Week: 1 engineer for 1 week (40h)</li>
-                      <li>Go-Live Week: 1 engineer for 1 week (40h)</li>
-                    </ul>
+                  <div className="onsite-note">
+                    <p><strong>Note:</strong> Onsite schedules (UAT, Go-Live, Hypercare, etc.) must be manually created after applying this schedule.</p>
                   </div>
                 </>
               ) : (

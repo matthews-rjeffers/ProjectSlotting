@@ -41,8 +41,9 @@ namespace ProjectScheduler.Models
 
     public class OnsitePhase
     {
-        public string Type { get; set; } = null!; // "UAT" or "GoLive"
-        public DateTime WeekStartDate { get; set; }
+        public string Type { get; set; } = null!; // "UAT", "GoLive", "Hypercare", etc.
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
         public int EngineerCount { get; set; }
         public int TotalHours { get; set; }
     }

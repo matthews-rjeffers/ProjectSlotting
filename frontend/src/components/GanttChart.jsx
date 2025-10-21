@@ -8,6 +8,7 @@ const PHASE_COLORS = {
   Training: '#27ae60',
   PLCTesting: '#e74c3c',
   IntegrationTesting: '#7f8c8d',
+  Hypercare: '#FF6B9D',
   Custom: '#34495e'
 };
 
@@ -19,6 +20,7 @@ const MILESTONE_COLORS = {
   Training: '#27ae60',
   PLCTesting: '#e74c3c',
   IntegrationTesting: '#7f8c8d',
+  Hypercare: '#FF6B9D',
   Custom: '#34495e'
 };
 
@@ -362,6 +364,10 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
             <span>Integration Testing</span>
           </div>
           <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.Hypercare }}></div>
+            <span>Hypercare</span>
+          </div>
+          <div className="legend-item">
             <div className="legend-color" style={{ backgroundColor: PHASE_COLORS.Custom }}></div>
             <span>Custom</span>
           </div>
@@ -388,6 +394,10 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
           <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.IntegrationTesting }}></div>
             <span>Integration Testing</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.Hypercare }}></div>
+            <span>Hypercare</span>
           </div>
           <div className="legend-item">
             <div className="legend-milestone" style={{ borderColor: MILESTONE_COLORS.Custom }}></div>

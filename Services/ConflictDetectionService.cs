@@ -221,7 +221,7 @@ public class ConflictDetectionService : IConflictDetectionService
 
         // Filter by date range in memory
         overlappingOnsite = overlappingOnsite
-            .Where(os => os.WeekStartDate >= searchStartDate && os.WeekStartDate <= searchEndDate)
+            .Where(os => os.StartDate >= searchStartDate && os.StartDate <= searchEndDate)
             .ToList();
 
         if (overlappingOnsite.Any())
@@ -238,7 +238,7 @@ public class ConflictDetectionService : IConflictDetectionService
                 Message = $"Overlapping onsite schedules detected with {overlappingOnsite.Count} other project(s)",
                 Details = $"The following projects have onsite schedules during this period: {string.Join(", ", conflictingProjects)}. " +
                          $"Ensure adequate onsite resources are available.",
-                ConflictWeekStart = overlappingOnsite.First().WeekStartDate,
+                ConflictWeekStart = overlappingOnsite.First().StartDate,
                 ConflictingProjects = conflictingProjects
             };
             result.Conflicts.Add(conflict);

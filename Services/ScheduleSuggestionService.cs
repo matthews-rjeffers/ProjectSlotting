@@ -390,71 +390,8 @@ namespace ProjectScheduler.Services
                     }
                 }
 
-                // Clear existing onsite schedules for this project
-                var existingSchedules = await _context.OnsiteSchedules
-                    .Where(s => s.ProjectId == projectId)
-                    .ToListAsync();
-                _context.OnsiteSchedules.RemoveRange(existingSchedules);
-
-                // Create UAT onsite schedule (1 engineer for 1 week)
-                var uatWeekStart = GetMondayOfWeek(suggestion.EstimatedUatDate);
-                var uatSchedule = new OnsiteSchedule
-                {
-                    ProjectId = projectId,
-                    WeekStartDate = uatWeekStart,
-                    EngineerCount = 1,
-                    TotalHours = 40,
-                    OnsiteType = "UAT",
-                    CreatedDate = DateTime.UtcNow
-                };
-                _context.OnsiteSchedules.Add(uatSchedule);
-
-                // Create UAT ProjectAllocation records (8h per day for 5 days)
-                for (int i = 0; i < 5; i++)
-                {
-                    var uatDate = uatWeekStart.AddDays(i);
-                    var uatAllocation = new ProjectAllocation
-                    {
-                        ProjectId = projectId,
-                        SquadId = squadId,
-                        AllocationDate = DateOnly.FromDateTime(uatDate),
-                        AllocatedHours = 8,
-                        AllocationType = "UAT",
-                        CreatedDate = DateTime.UtcNow
-                    };
-                    _context.ProjectAllocations.Add(uatAllocation);
-                    Console.WriteLine($"[APPLY SCHEDULE] UAT allocation: {uatDate:yyyy-MM-dd}: 8h");
-                }
-
-                // Create Go-Live onsite schedule (1 engineer for 1 week)
-                var goLiveWeekStart = GetMondayOfWeek(suggestion.EstimatedGoLiveDate);
-                var goLiveSchedule = new OnsiteSchedule
-                {
-                    ProjectId = projectId,
-                    WeekStartDate = goLiveWeekStart,
-                    EngineerCount = 1,
-                    TotalHours = 40,
-                    OnsiteType = "GoLive",
-                    CreatedDate = DateTime.UtcNow
-                };
-                _context.OnsiteSchedules.Add(goLiveSchedule);
-
-                // Create Go-Live ProjectAllocation records (8h per day for 5 days)
-                for (int i = 0; i < 5; i++)
-                {
-                    var goLiveDate = goLiveWeekStart.AddDays(i);
-                    var goLiveAllocation = new ProjectAllocation
-                    {
-                        ProjectId = projectId,
-                        SquadId = squadId,
-                        AllocationDate = DateOnly.FromDateTime(goLiveDate),
-                        AllocatedHours = 8,
-                        AllocationType = "GoLive",
-                        CreatedDate = DateTime.UtcNow
-                    };
-                    _context.ProjectAllocations.Add(goLiveAllocation);
-                    Console.WriteLine($"[APPLY SCHEDULE] Go-Live allocation: {goLiveDate:yyyy-MM-dd}: 8h");
-                }
+                // Note: Users must manually create onsite schedules (UAT, GoLive, Hypercare, etc.) via Project Form
+                // Onsite schedules are no longer auto-created by Schedule Suggestion
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

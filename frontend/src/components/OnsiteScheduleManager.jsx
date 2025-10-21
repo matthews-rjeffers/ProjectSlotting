@@ -6,7 +6,8 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
   const [schedules, setSchedules] = useState([]);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [newSchedule, setNewSchedule] = useState({
-    weekStartDate: '',
+    startDate: '',
+    endDate: '',
     engineerCount: 1,
     totalHours: 40,
     onsiteType: 'UAT',
@@ -29,22 +30,28 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
   };
 
   const handleAddSchedule = async () => {
-    if (!newSchedule.weekStartDate) {
-      alert('Please select a week start date');
+    if (!newSchedule.startDate || !newSchedule.endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+
+    if (new Date(newSchedule.endDate) < new Date(newSchedule.startDate)) {
+      alert('End date must be on or after start date');
       return;
     }
 
     try {
       await createOnsiteSchedule({
         projectId,
-        weekStartDate: newSchedule.weekStartDate,
+        startDate: newSchedule.startDate,
+        endDate: newSchedule.endDate,
         engineerCount: parseInt(newSchedule.engineerCount),
         totalHours: parseInt(newSchedule.totalHours),
         onsiteType: newSchedule.onsiteType,
         notes: newSchedule.notes || null
       });
 
-      setNewSchedule({ weekStartDate: '', engineerCount: 1, totalHours: 40, onsiteType: 'UAT', notes: '' });
+      setNewSchedule({ startDate: '', endDate: '', engineerCount: 1, totalHours: 40, onsiteType: 'UAT', notes: '' });
       loadSchedules();
     } catch (error) {
       console.error('Error creating schedule:', error);
@@ -58,7 +65,8 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
       const updatePayload = {
         onsiteScheduleId: schedule.onsiteScheduleId,
         projectId: schedule.projectId,
-        weekStartDate: schedule.weekStartDate,
+        startDate: schedule.startDate,
+        endDate: schedule.endDate,
         engineerCount: schedule.engineerCount,
         totalHours: schedule.totalHours,
         onsiteType: schedule.onsiteType,
@@ -95,36 +103,22 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getWeekMonday = (dateStr) => {
-    // Parse date in local timezone to avoid timezone shift issues
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const dayOfWeek = date.getDay();
-    const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-    const monday = new Date(date.getFullYear(), date.getMonth(), diff);
-
-    // Format as YYYY-MM-DD
-    const yyyy = monday.getFullYear();
-    const mm = String(monday.getMonth() + 1).padStart(2, '0');
-    const dd = String(monday.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
   return (
     <div className="onsite-schedule-manager">
-      <h4>Onsite Schedule</h4>
+      <h4>Onsite Schedules</h4>
       <p className="schedule-description">
-        Schedule specific weeks for onsite work. Specify the number of engineers and total hours for each week.
+        Schedule onsite periods (UAT, Go-Live, Hypercare, etc.). Hours are spread across ALL days (including weekends).
       </p>
 
       <div className="schedule-list">
         {schedules.length === 0 ? (
-          <div className="no-schedules">No onsite weeks scheduled</div>
+          <div className="no-schedules">No onsite schedules yet</div>
         ) : (
           <table className="schedule-table">
             <thead>
               <tr>
-                <th>Week Starting</th>
+                <th>Start Date</th>
+                <th>End Date</th>
                 <th>Engineers</th>
                 <th>Type</th>
                 <th>Total Hours</th>
@@ -140,10 +134,20 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                       <td>
                         <input
                           type="date"
-                          value={editingSchedule.weekStartDate.split('T')[0]}
+                          value={editingSchedule.startDate.split('T')[0]}
                           onChange={(e) => setEditingSchedule({
                             ...editingSchedule,
-                            weekStartDate: e.target.value
+                            startDate: e.target.value
+                          })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="date"
+                          value={editingSchedule.endDate.split('T')[0]}
+                          onChange={(e) => setEditingSchedule({
+                            ...editingSchedule,
+                            endDate: e.target.value
                           })}
                         />
                       </td>
@@ -172,6 +176,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                           <option value="Training">Training</option>
                           <option value="PLCTesting">PLC Testing</option>
                           <option value="IntegrationTesting">Integration Testing</option>
+                          <option value="Hypercare">Hypercare</option>
                           <option value="Custom">Custom</option>
                         </select>
                       </td>
@@ -209,7 +214,8 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                     </>
                   ) : (
                     <>
-                      <td className="week-date">{formatDate(schedule.weekStartDate)}</td>
+                      <td className="week-date">{formatDate(schedule.startDate)}</td>
+                      <td className="week-date">{formatDate(schedule.endDate)}</td>
                       <td>{schedule.engineerCount}</td>
                       <td>
                         <span className={`type-badge ${schedule.onsiteType.toLowerCase()}`}>
@@ -236,17 +242,22 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
       </div>
 
       <div className="add-schedule">
-        <h5>Add Onsite Week</h5>
+        <h5>Add Onsite Schedule</h5>
         <div className="schedule-form">
           <div className="form-field">
-            <label>Week Starting (Monday)</label>
+            <label>Start Date</label>
             <input
               type="date"
-              value={newSchedule.weekStartDate}
-              onChange={(e) => {
-                const monday = getWeekMonday(e.target.value);
-                setNewSchedule({ ...newSchedule, weekStartDate: monday });
-              }}
+              value={newSchedule.startDate}
+              onChange={(e) => setNewSchedule({ ...newSchedule, startDate: e.target.value })}
+            />
+          </div>
+          <div className="form-field">
+            <label>End Date</label>
+            <input
+              type="date"
+              value={newSchedule.endDate}
+              onChange={(e) => setNewSchedule({ ...newSchedule, endDate: e.target.value })}
             />
           </div>
           <div className="form-field">
@@ -270,6 +281,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
               <option value="Training">Training</option>
               <option value="PLCTesting">PLC Testing</option>
               <option value="IntegrationTesting">Integration Testing</option>
+              <option value="Hypercare">Hypercare</option>
               <option value="Custom">Custom</option>
             </select>
           </div>
@@ -293,7 +305,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
             />
           </div>
           <button type="button" className="btn-add" onClick={handleAddSchedule}>
-            Add Week
+            Add Schedule
           </button>
         </div>
       </div>

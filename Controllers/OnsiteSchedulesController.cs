@@ -26,7 +26,7 @@ namespace ProjectScheduler.Controllers
         {
             return await _context.OnsiteSchedules
                 .Where(os => os.ProjectId == projectId)
-                .OrderBy(os => os.WeekStartDate)
+                .OrderBy(os => os.StartDate)
                 .ToListAsync();
         }
 
@@ -37,7 +37,8 @@ namespace ProjectScheduler.Controllers
             var schedule = new OnsiteSchedule
             {
                 ProjectId = dto.ProjectId,
-                WeekStartDate = dto.WeekStartDate,
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
                 EngineerCount = dto.EngineerCount,
                 TotalHours = dto.TotalHours,
                 OnsiteType = dto.OnsiteType,
@@ -65,12 +66,12 @@ namespace ProjectScheduler.Controllers
 
         private async Task CreateAllocationsForSchedule(OnsiteSchedule schedule, int squadId)
         {
-            var weekStart = schedule.WeekStartDate;
-            var weekEnd = weekStart.AddDays(4); // Monday to Friday
-            var workingDays = GetWorkingDays(weekStart, weekEnd);
-            var hoursPerDay = (decimal)schedule.TotalHours / workingDays.Count;
+            var startDate = schedule.StartDate;
+            var endDate = schedule.EndDate;
+            var allDays = GetAllDays(startDate, endDate); // Include ALL days (even weekends) for onsite work
+            var hoursPerDay = (decimal)schedule.TotalHours / allDays.Count;
 
-            foreach (var day in workingDays)
+            foreach (var day in allDays)
             {
                 var dateOnly = DateOnly.FromDateTime(day);
 
@@ -111,6 +112,16 @@ namespace ProjectScheduler.Controllers
             return days;
         }
 
+        private List<DateTime> GetAllDays(DateTime start, DateTime end)
+        {
+            var days = new List<DateTime>();
+            for (var date = start; date <= end; date = date.AddDays(1))
+            {
+                days.Add(date);
+            }
+            return days;
+        }
+
         // PUT: api/OnsiteSchedules/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateOnsiteSchedule(int id, UpdateOnsiteScheduleDto dto)
@@ -140,7 +151,8 @@ namespace ProjectScheduler.Controllers
 
             // Update the properties
             schedule.ProjectId = dto.ProjectId;
-            schedule.WeekStartDate = dto.WeekStartDate;
+            schedule.StartDate = dto.StartDate;
+            schedule.EndDate = dto.EndDate;
             schedule.EngineerCount = dto.EngineerCount;
             schedule.TotalHours = dto.TotalHours;
             schedule.OnsiteType = dto.OnsiteType;
@@ -174,11 +186,11 @@ namespace ProjectScheduler.Controllers
 
         private async Task RemoveAllocationsForSchedule(OnsiteSchedule schedule, int squadId)
         {
-            var weekStart = schedule.WeekStartDate;
-            var weekEnd = weekStart.AddDays(4);
-            var workingDays = GetWorkingDays(weekStart, weekEnd);
+            var startDate = schedule.StartDate;
+            var endDate = schedule.EndDate;
+            var allDays = GetAllDays(startDate, endDate); // Include ALL days for onsite schedules
 
-            foreach (var day in workingDays)
+            foreach (var day in allDays)
             {
                 var dateOnly = DateOnly.FromDateTime(day);
 
@@ -234,7 +246,10 @@ namespace ProjectScheduler.Controllers
         public int ProjectId { get; set; }
 
         [Required]
-        public DateTime WeekStartDate { get; set; }
+        public DateTime StartDate { get; set; }
+
+        [Required]
+        public DateTime EndDate { get; set; }
 
         [Required]
         [Range(1, 20)]
@@ -260,7 +275,10 @@ namespace ProjectScheduler.Controllers
         public int ProjectId { get; set; }
 
         [Required]
-        public DateTime WeekStartDate { get; set; }
+        public DateTime StartDate { get; set; }
+
+        [Required]
+        public DateTime EndDate { get; set; }
 
         [Required]
         [Range(1, 20)]

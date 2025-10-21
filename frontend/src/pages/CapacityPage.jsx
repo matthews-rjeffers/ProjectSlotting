@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { getSquads, getProjects } from '../api';
 import ImprovedCapacityView from '../components/ImprovedCapacityView';
 import ProjectForm from '../components/ProjectForm';
-import ProjectList from '../components/ProjectList';
 import ExportData from '../components/ExportData';
 import '../App.css';
 
@@ -12,6 +11,7 @@ function CapacityPage() {
   const [selectedSquad, setSelectedSquad] = useState(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [squadMetrics, setSquadMetrics] = useState({ overallUtilization: 0, allocatedProjectCount: 0 });
   const [dateRange, setDateRange] = useState({
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)).toISOString().split('T')[0]
@@ -58,6 +58,11 @@ function CapacityPage() {
     loadProjects();
   };
 
+  // Get selected squad and calculate its metrics
+  const selectedSquadData = squads.find(s => s.squadId === selectedSquad);
+  const teamSize = selectedSquadData?.teamMembers?.filter(tm => tm.isActive).length || 0;
+  const totalDailyCapacity = selectedSquadData?.teamMembers?.filter(tm => tm.isActive).reduce((sum, tm) => sum + tm.dailyCapacityHours, 0) || 0;
+
   return (
     <div className="page-container capacity-page">
       <div className="page-header">
@@ -97,6 +102,28 @@ function CapacityPage() {
             )}
           </div>
 
+          {selectedSquad && (
+            <div className="sidebar-section sidebar-metrics">
+              <h3>Squad Metrics</h3>
+              <div className="sidebar-metric">
+                <span className="metric-label">Team Size</span>
+                <span className="metric-value">{teamSize}</span>
+              </div>
+              <div className="sidebar-metric">
+                <span className="metric-label">Daily Capacity</span>
+                <span className="metric-value">{totalDailyCapacity.toFixed(1)}h</span>
+              </div>
+              <div className="sidebar-metric">
+                <span className="metric-label">Utilization</span>
+                <span className="metric-value">{squadMetrics.overallUtilization}%</span>
+              </div>
+              <div className="sidebar-metric">
+                <span className="metric-label">Active Projects</span>
+                <span className="metric-value">{squadMetrics.allocatedProjectCount}</span>
+              </div>
+            </div>
+          )}
+
           <div className="sidebar-section">
             <h3>Date Range</h3>
             <div className="date-range">
@@ -118,14 +145,6 @@ function CapacityPage() {
               </label>
             </div>
           </div>
-
-          <div className="sidebar-section">
-            <ProjectList
-              projects={projects}
-              onEdit={handleEditProject}
-              onDelete={handleDeleteProject}
-            />
-          </div>
         </aside>
 
         <main className="main-content">
@@ -137,6 +156,8 @@ function CapacityPage() {
               dateRange={dateRange}
               onProjectUpdate={loadProjects}
               onEditProject={handleEditProject}
+              hideSummary={true}
+              onMetricsUpdate={setSquadMetrics}
             />
           )}
         </main>

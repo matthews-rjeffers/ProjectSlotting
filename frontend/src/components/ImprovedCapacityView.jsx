@@ -3,7 +3,7 @@ import { getSquadCapacity, allocateProject, reallocateProject, unassignProject, 
 import ScheduleSuggestionModal from './ScheduleSuggestionModal';
 import './ImprovedCapacityView.css';
 
-function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUpdate, onEditProject }) {
+function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUpdate, onEditProject, hideSummary = false, onMetricsUpdate }) {
   const [capacityData, setCapacityData] = useState({});
   const [projectAllocations, setProjectAllocations] = useState({});
   const [weeklyData, setWeeklyData] = useState([]);
@@ -272,10 +272,6 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
     }
   };
 
-  if (loading) {
-    return <div className="capacity-loading">Loading capacity data...</div>;
-  }
-
   // Filter out projects allocated to ANY squad (not just current squad)
   const unallocatedProjects = projects.filter(p => !projectAllocations?.all || !projectAllocations.all[p.projectId]);
 
@@ -290,31 +286,47 @@ function ImprovedCapacityView({ squadId, squad, projects, dateRange, onProjectUp
   // Count only projects allocated to THIS squad
   const allocatedProjectCount = projectAllocations?.squad ? Object.keys(projectAllocations.squad).length : 0;
 
+  // Send metrics to parent when they change
+  useEffect(() => {
+    if (onMetricsUpdate) {
+      onMetricsUpdate({
+        overallUtilization,
+        allocatedProjectCount
+      });
+    }
+  }, [overallUtilization, allocatedProjectCount, onMetricsUpdate]);
+
+  if (loading) {
+    return <div className="capacity-loading">Loading capacity data...</div>;
+  }
+
   return (
     <div className="improved-capacity-view">
-      {/* Summary Cards */}
-      <div className="capacity-summary">
-        <div className="summary-card">
-          <div className="card-label">Team Size</div>
-          <div className="card-value">{teamSize}</div>
-          <div className="card-sublabel">active members</div>
+      {/* Summary Cards - Only show if hideSummary is false */}
+      {!hideSummary && (
+        <div className="capacity-summary">
+          <div className="summary-card">
+            <div className="card-label">Team Size</div>
+            <div className="card-value">{teamSize}</div>
+            <div className="card-sublabel">active members</div>
+          </div>
+          <div className="summary-card">
+            <div className="card-label">Daily Capacity</div>
+            <div className="card-value">{totalDailyCapacity.toFixed(1)}</div>
+            <div className="card-sublabel">hours per day</div>
+          </div>
+          <div className="summary-card">
+            <div className="card-label">Overall Utilization</div>
+            <div className="card-value">{overallUtilization}%</div>
+            <div className="card-sublabel">across all weeks</div>
+          </div>
+          <div className="summary-card">
+            <div className="card-label">Active Projects</div>
+            <div className="card-value">{allocatedProjectCount}</div>
+            <div className="card-sublabel">currently allocated</div>
+          </div>
         </div>
-        <div className="summary-card">
-          <div className="card-label">Daily Capacity</div>
-          <div className="card-value">{totalDailyCapacity.toFixed(1)}</div>
-          <div className="card-sublabel">hours per day</div>
-        </div>
-        <div className="summary-card">
-          <div className="card-label">Overall Utilization</div>
-          <div className="card-value">{overallUtilization}%</div>
-          <div className="card-sublabel">across all weeks</div>
-        </div>
-        <div className="summary-card">
-          <div className="card-label">Active Projects</div>
-          <div className="card-value">{allocatedProjectCount}</div>
-          <div className="card-sublabel">currently allocated</div>
-        </div>
-      </div>
+      )}
 
       {/* Unallocated Projects */}
       {unallocatedProjects.length > 0 && (

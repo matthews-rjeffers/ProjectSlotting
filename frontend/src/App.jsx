@@ -15,7 +15,7 @@ function App() {
         <header className="app-header">
           <h1>Project Scheduler</h1>
           <nav className="main-nav">
-            <NavLink to="/capacity" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
               Capacity Planning
             </NavLink>
             <NavLink to="/projects" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>

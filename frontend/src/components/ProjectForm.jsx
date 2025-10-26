@@ -23,6 +23,7 @@ function ProjectForm({ project, isAssigned, onSave, onCancel }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [createdProject, setCreatedProject] = useState(null);
+  const [hasUnsavedOnsiteData, setHasUnsavedOnsiteData] = useState(false);
 
   useEffect(() => {
     if (project) {
@@ -134,6 +135,27 @@ function ProjectForm({ project, isAssigned, onSave, onCancel }) {
       console.error('Error unassigning project:', error);
       alert('Failed to unassign project. Please try again.');
     }
+  };
+
+  const handleCancel = () => {
+    if (hasUnsavedOnsiteData) {
+      if (!window.confirm('You have unsaved onsite schedule data (dates filled in but not added). Are you sure you want to cancel?')) {
+        return;
+      }
+    }
+    onCancel();
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+
+    if (hasUnsavedOnsiteData) {
+      if (!window.confirm('You have unsaved onsite schedule data (dates filled in but not added). Are you sure you want to update without adding this schedule?')) {
+        return;
+      }
+    }
+
+    await handleSubmit(e);
   };
 
   return (
@@ -306,6 +328,7 @@ function ProjectForm({ project, isAssigned, onSave, onCancel }) {
               projectId={project?.projectId || createdProject?.projectId}
               uatDate={formData.uatDate}
               goLiveDate={formData.goLiveDate}
+              onUnsavedDataChange={setHasUnsavedOnsiteData}
             />
           )}
 
@@ -322,14 +345,19 @@ function ProjectForm({ project, isAssigned, onSave, onCancel }) {
             )}
             <button
               type="button"
-              onClick={createdProject ? onSave : onCancel}
+              onClick={createdProject ? onSave : handleCancel}
               className="btn btn-secondary"
               disabled={saving}
             >
               {createdProject ? 'Done' : 'Cancel'}
             </button>
             {!createdProject && (
-              <button type="submit" className="btn btn-primary" disabled={saving}>
+              <button
+                type="button"
+                onClick={handleUpdate}
+                className="btn btn-primary"
+                disabled={saving}
+              >
                 {saving ? 'Saving...' : (project ? 'Update' : 'Create Project')}
               </button>
             )}

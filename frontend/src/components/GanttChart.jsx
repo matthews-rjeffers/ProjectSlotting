@@ -151,7 +151,8 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
     } else if (zoomLevel === 'week') {
       // Each column is 80px wide (from CSS)
       const COLUMN_WIDTH_PX = 80;
-      const timelineStart = dateRange.start.getTime();
+      // Use the first column's date (which is the Sunday before dateRange.start)
+      const timelineStart = timelineColumns[0].date.getTime();
       const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
       const startWeeks = (startTime - timelineStart) / WEEK_MS;
@@ -289,10 +290,9 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
 
                     {/* Onsite Phases (all types) */}
                     {project.onsitePhases.map((phase, index) => {
-                      // The phase starts on weekStartDate and lasts 1 week (Monday-Friday)
-                      const phaseStart = new Date(phase.weekStartDate);
-                      const phaseEnd = new Date(phase.weekStartDate);
-                      phaseEnd.setDate(phaseEnd.getDate() + 4); // 5 days (Monday-Friday)
+                      // Use the actual start and end dates from the backend
+                      const phaseStart = new Date(phase.startDate);
+                      const phaseEnd = new Date(phase.endDate);
 
                       // Display "PLC" instead of "PLCTesting" for the label
                       const displayLabel = phase.type === 'PLCTesting' ? 'PLC' : phase.type;
@@ -305,7 +305,7 @@ function GanttChart({ squads, dateRange, zoomLevel, onProjectClick }) {
                             ...calculatePosition(phaseStart, phaseEnd),
                             backgroundColor: PHASE_COLORS[phase.type] || '#888'
                           }}
-                          title={`${phase.type}: ${formatDate(phase.weekStartDate)} (${phase.engineerCount} eng, ${phase.totalHours}h)`}
+                          title={`${phase.type}: ${formatDate(phase.startDate)} - ${formatDate(phase.endDate)} (${phase.engineerCount} eng, ${phase.totalHours}h)`}
                         >
                           <span className="phase-label">{displayLabel}</span>
                         </div>

@@ -33,7 +33,11 @@ const ScheduleSuggestionModal = ({ project, onClose, onSuccess }) => {
   const [comparingSquadId, setComparingSquadId] = useState(null);
   const [bufferPercentage, setBufferPercentage] = useState(project.bufferPercentage || 20);
   const [algorithmType, setAlgorithmType] = useState('strict'); // 'greedy', 'strict', or 'delayed'
-  const [startDate, setStartDate] = useState(getNextMonday());
+  const [startDate, setStartDate] = useState(
+    project.startDate
+      ? new Date(project.startDate).toISOString().split('T')[0]
+      : getNextMonday()
+  );
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');

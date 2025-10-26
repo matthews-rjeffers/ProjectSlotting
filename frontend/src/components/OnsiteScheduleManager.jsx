@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getProjectOnsiteSchedules, createOnsiteSchedule, updateOnsiteSchedule, deleteOnsiteSchedule } from '../api';
 import './OnsiteScheduleManager.css';
 
-const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
+const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate, onUnsavedDataChange }) => {
   const [schedules, setSchedules] = useState([]);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [newSchedule, setNewSchedule] = useState({
@@ -19,6 +19,14 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
       loadSchedules();
     }
   }, [projectId]);
+
+  // Notify parent component when there's unsaved data
+  useEffect(() => {
+    if (onUnsavedDataChange) {
+      const hasUnsavedData = !!(newSchedule.startDate || newSchedule.endDate);
+      onUnsavedDataChange(hasUnsavedData);
+    }
+  }, [newSchedule.startDate, newSchedule.endDate, onUnsavedDataChange]);
 
   const loadSchedules = async () => {
     try {
@@ -145,6 +153,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
                         <input
                           type="date"
                           value={editingSchedule.endDate.split('T')[0]}
+                          min={editingSchedule.startDate.split('T')[0]}
                           onChange={(e) => setEditingSchedule({
                             ...editingSchedule,
                             endDate: e.target.value
@@ -257,6 +266,7 @@ const OnsiteScheduleManager = ({ projectId, uatDate, goLiveDate }) => {
             <input
               type="date"
               value={newSchedule.endDate}
+              min={newSchedule.startDate || undefined}
               onChange={(e) => setNewSchedule({ ...newSchedule, endDate: e.target.value })}
             />
           </div>
